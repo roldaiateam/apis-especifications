@@ -92,15 +92,23 @@ components:
           - name: timestamp
             type: string
             doc: ISO 8601 timestamp when the event occurred
-          - name: tenantId
-            type: string
-            doc: Unique identifier for the tenant
-          - name: tenantName
-            type: string
-            doc: Name of the tenant/organization
-          - name: userName
-            type: string
-            doc: Name of the user who created the tenant
+          - name: payload
+            type:
+              type: record
+              name: TenantBase
+              namespace: com.proactivedevs.contracts.tenants.v1
+              doc: Base tenant information
+              fields:
+                - name: tenantId
+                  type: string
+                  doc: Unique identifier for the tenant
+                - name: tenantName
+                  type: string
+                  doc: Name of the tenant/organization
+                - name: userName
+                  type: string
+                  doc: Name of the user who created the tenant
+            doc: Tenant data payload
           - name: metadata
             type:
               - "null"

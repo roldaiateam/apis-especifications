@@ -5,7 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="0e46fd86-38f6-47f5-8807-39680d55f801" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tenants/event/asyncapi.yml" beforeDir="false" afterPath="$PROJECT_DIR$/tenants/event/asyncapi.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tenants/event/target/classes/META-INF/asyncapi/asyncapi.yml" beforeDir="false" afterPath="$PROJECT_DIR$/tenants/event/target/classes/META-INF/asyncapi/asyncapi.yml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tenants/event/target/classes/META-INF/asyncapi/tenants-avro/v1/tenant-created-envelope.avsc" beforeDir="false" afterPath="$PROJECT_DIR$/tenants/event/target/classes/META-INF/asyncapi/tenants-avro/v1/tenant-created-envelope.avsc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tenants/event/target/tenants-event-1.0.0-SNAPSHOT.jar" beforeDir="false" afterPath="$PROJECT_DIR$/tenants/event/target/tenants-event-1.0.0-SNAPSHOT.jar" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tenants/event/tenants-avro/v1/tenant-created-envelope.avsc" beforeDir="false" afterPath="$PROJECT_DIR$/tenants/event/tenants-avro/v1/tenant-created-envelope.avsc" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -53,7 +57,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1770480499836</updated>
-      <workItem from="1770480501075" duration="408000" />
+      <workItem from="1770480501075" duration="1357000" />
     </task>
     <servers />
   </component>
