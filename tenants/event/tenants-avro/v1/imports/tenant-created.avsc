@@ -20,9 +20,9 @@
       "doc": "Company name associated with the tenant"
     },
     {
-      "name": "userName",
+      "name": "userId",
       "type": "string",
-      "doc": "Name of the user who created the tenant"
+      "doc": "Identifier of the user who created the tenant"
     }
   ]
 }
