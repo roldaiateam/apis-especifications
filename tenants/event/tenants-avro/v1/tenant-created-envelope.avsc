@@ -1,6 +1,6 @@
 {
   "type": "record",
-  "name": "TenantCreatedEvent",
+  "name": "TenantCreatedEventEnvelope",
   "namespace": "com.proactivedevs.contracts.tenants.v1",
   "doc": "Event emitted when a new tenant is created",
   "fields": [
@@ -22,29 +22,7 @@
     },
     {
       "name": "payload",
-      "type": {
-        "type": "record",
-        "name": "TenantBase",
-        "namespace": "com.proactivedevs.contracts.tenants.v1",
-        "doc": "Base tenant information",
-        "fields": [
-          {
-            "name": "tenantId",
-            "type": "string",
-            "doc": "Unique identifier for the tenant"
-          },
-          {
-            "name": "tenantName",
-            "type": "string",
-            "doc": "Name of the tenant/organization"
-          },
-          {
-            "name": "userName",
-            "type": "string",
-            "doc": "Name of the user who created the tenant"
-          }
-        ]
-      },
+      "type": "TenantCreatedAvro",
       "doc": "Tenant data payload"
     },
     {

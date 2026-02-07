@@ -1,6 +1,6 @@
 {
   "type": "record",
-  "name": "TenantBase",
+  "name": "TenantCreatedAvro",
   "namespace": "com.proactivedevs.contracts.tenants.v1",
   "doc": "Base tenant information schema",
   "fields": [
@@ -13,6 +13,11 @@
       "name": "tenantName",
       "type": "string",
       "doc": "Name of the tenant/organization"
+    },
+    {
+      "name": "companyName",
+      "type": "string",
+      "doc": "Company name associated with the tenant"
     },
     {
       "name": "userName",

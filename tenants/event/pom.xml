@@ -62,6 +62,9 @@
                         </goals>
                         <configuration>
                             <sourceDirectory>${project.basedir}/tenants-avro/v1</sourceDirectory>
+                            <imports>
+                                <import>${project.basedir}/tenants-avro/v1/imports/tenant-created.avsc</import>
+                            </imports>
                             <excludes>
                                 <exclude>**/imports/**</exclude>
                             </excludes>
