@@ -44,12 +44,12 @@
         <repository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/ThalioStock/apis-especifications</url>
+            <url>https://maven.pkg.github.com/roldaiateam/apis-especifications</url>
         </repository>
         <snapshotRepository>
             <id>github</id>
             <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/ThalioStock/apis-especifications</url>
+            <url>https://maven.pkg.github.com/roldaiateam/apis-especifications</url>
         </snapshotRepository>
     </distributionManagement>
 
