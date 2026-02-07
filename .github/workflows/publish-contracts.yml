@@ -185,6 +185,69 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn deploy -DskipTests
 
+      - name: Generate dependency info
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        id: dependency-info
+        env:
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
+        run: |
+          COMMENT="## 📦 Contracts Published Successfully\n\n"
+          
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            COMMENT="${COMMENT}**Release version:** \`$VERSION\` (stable)\n\n"
+          else
+            COMMENT="${COMMENT}**Snapshot version:** \`$VERSION\`\n\n"
+          fi
+          
+          COMMENT="${COMMENT}### Maven Dependencies\n\n"
+          COMMENT="${COMMENT}Add the following dependencies to your \`pom.xml\`:\n\n"
+          COMMENT="${COMMENT}\`\`\`xml\n"
+          
+          # Split modules by comma
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            # Check if asyncapi.yml exists
+            if [ -f "$MODULE_PATH/asyncapi.yml" ]; then
+              # Get artifact ID from module path
+              MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+              ARTIFACT_ID="${MODULE_NAME}"
+              
+              COMMENT="${COMMENT}<dependency>\n"
+              COMMENT="${COMMENT}    <groupId>com.proactivedevs.contracts</groupId>\n"
+              COMMENT="${COMMENT}    <artifactId>${ARTIFACT_ID}</artifactId>\n"
+              COMMENT="${COMMENT}    <version>${VERSION}</version>\n"
+              COMMENT="${COMMENT}</dependency>\n"
+            fi
+          done
+          
+          COMMENT="${COMMENT}\`\`\`\n\n"
+          COMMENT="${COMMENT}---\n\n"
+          COMMENT="${COMMENT}**📚 Package location:** [GitHub Packages](https://github.com/${{ github.repository }}/packages)\n"
+          
+          # Save comment to file for the next step
+          echo -e "$COMMENT" > /tmp/comment.txt
+          
+          # Also output for logs
+          echo "Generated comment:"
+          cat /tmp/comment.txt
+
+      - name: Create commit comment
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const comment = fs.readFileSync('/tmp/comment.txt', 'utf8');
+            
+            await github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: comment
+            });
+
       - name: Create Git tag (main only)
         if: github.ref == 'refs/heads/main' && steps.detect-changes.outputs.has_changes == 'true'
         run: |
