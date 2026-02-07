@@ -1,7 +1,7 @@
 asyncapi: 3.0.0
 info:
   title: Tenants Events API
-  version: 1.0.2
+  version: 1.0.3
   description: |
     Tenants domain events published to RabbitMQ.
     This specification defines the events emitted when tenant-related actions occur.
