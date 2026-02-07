@@ -7,7 +7,7 @@ on:
       - develop
 
 permissions:
-  contents: read
+  contents: write
   packages: write
 
 jobs:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -24,6 +26,137 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'maven'
+
+      - name: Detect changed modules
+        id: detect-changes
+        run: |
+          echo "Detecting modules with changes in this push..."
+          
+          # For the first push, compare with empty tree
+          if git rev-parse HEAD~1 >/dev/null 2>&1; then
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+          else
+            CHANGED_FILES=$(git ls-files)
+          fi
+          
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Find unique module directories that have changes
+          CHANGED_MODULES=$(echo "$CHANGED_FILES" | grep -E '^[^/]+/[^/]+/' | cut -d'/' -f1-2 | sort -u || true)
+          
+          if [ -z "$CHANGED_MODULES" ]; then
+            echo "No contract modules changed in this push"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "modules=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed modules:"
+            echo "$CHANGED_MODULES"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            # Convert to comma-separated list for later use
+            MODULES_LIST=$(echo "$CHANGED_MODULES" | tr '\n' ',' | sed 's/,$//')
+            echo "modules=$MODULES_LIST" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate API versions
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
+        run: |
+          set -e
+          
+          VALIDATION_FAILED=0
+          ERROR_MESSAGES=""
+          
+          # Split modules by comma
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            echo "=================================================="
+            echo "Validating module: $MODULE_PATH"
+            echo "=================================================="
+            
+            # Check if asyncapi.yml exists in this module
+            ASYNCAPI_FILE="$MODULE_PATH/asyncapi.yml"
+            if [ ! -f "$ASYNCAPI_FILE" ]; then
+              echo "⚠️  No asyncapi.yml found in $MODULE_PATH, skipping validation"
+              continue
+            fi
+            
+            # Extract API version from asyncapi.yml
+            API_VERSION=$(grep -A 5 '^info:' "$ASYNCAPI_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+            
+            if [ -z "$API_VERSION" ]; then
+              echo "❌ Could not extract API version from $ASYNCAPI_FILE"
+              VALIDATION_FAILED=1
+              ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Could not extract API version"
+              continue
+            fi
+            
+            echo "📋 API version: $API_VERSION"
+            
+            # Determine Maven package name
+            MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}"
+            ENCODED_PACKAGE_NAME=$(echo "$PACKAGE_NAME" | sed 's/\./\%2E/g')
+            
+            echo "📦 Maven package: $PACKAGE_NAME"
+            
+            # Query GitHub Packages for existing versions
+            OWNER="${{ github.repository_owner }}"
+            API_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions"
+            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API_URL" || echo "[]")
+            
+            if echo "$RESPONSE" | grep -q '"message".*"Not Found"'; then
+              echo "✅ First version - validation passed"
+              continue
+            fi
+            
+            PUBLISHED_VERSIONS=$(echo "$RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 || echo "")
+            
+            if [ -z "$PUBLISHED_VERSIONS" ]; then
+              echo "✅ No versions published yet - validation passed"
+              continue
+            fi
+            
+            echo "📚 Published versions: $PUBLISHED_VERSIONS"
+            
+            LATEST_STABLE=$(echo "$PUBLISHED_VERSIONS" | grep -v 'SNAPSHOT' | sort -V | tail -n 1 || echo "")
+            
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              echo "🎯 Publishing to main (stable release)"
+              
+              if [ -n "$LATEST_STABLE" ]; then
+                if [ "$(printf '%s\n' "$LATEST_STABLE" "$API_VERSION" | sort -V | head -n1)" = "$API_VERSION" ] && [ "$API_VERSION" != "$LATEST_STABLE" ]; then
+                  echo "❌ Version $API_VERSION is not greater than latest stable $LATEST_STABLE"
+                  VALIDATION_FAILED=1
+                  ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Version must be > $LATEST_STABLE"
+                elif [ "$API_VERSION" = "$LATEST_STABLE" ]; then
+                  echo "❌ Version $API_VERSION already exists"
+                  VALIDATION_FAILED=1
+                  ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Version $API_VERSION already released"
+                else
+                  echo "✅ Version validation passed"
+                fi
+              else
+                echo "✅ First stable version - validation passed"
+              fi
+            else
+              echo "🎯 Publishing to develop (snapshot)"
+              echo "✅ Snapshot versions can overwrite - validation passed"
+            fi
+            
+            echo ""
+          done
+          
+          if [ $VALIDATION_FAILED -eq 1 ]; then
+            echo "❌ Version validation FAILED"
+            echo -e "$ERROR_MESSAGES"
+            exit 1
+          else
+            echo "✅ All validations passed"
+          fi
 
       - name: Set version for main branch (stable)
         if: github.ref == 'refs/heads/main'
@@ -43,15 +176,17 @@ jobs:
           echo "VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
 
       - name: Build and test
+        if: steps.detect-changes.outputs.has_changes == 'true'
         run: mvn clean verify
 
       - name: Deploy to GitHub Packages
+        if: steps.detect-changes.outputs.has_changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn deploy -DskipTests
 
       - name: Create Git tag (main only)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.detect-changes.outputs.has_changes == 'true'
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"

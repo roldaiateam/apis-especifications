@@ -1,0 +1,213 @@
+name: Validate Contracts
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  packages: read
+  pull-requests: write
+
+jobs:
+  validate-versions:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules
+        id: detect-changes
+        run: |
+          echo "Detecting modules with changes in this PR..."
+          
+          # Get the base branch (target of the PR)
+          BASE_BRANCH="${{ github.base_ref }}"
+          echo "Base branch: $BASE_BRANCH"
+          
+          # Get changed files in the PR
+          git fetch origin "$BASE_BRANCH"
+          CHANGED_FILES=$(git diff --name-only origin/"$BASE_BRANCH"...HEAD)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Find unique module directories that have changes
+          CHANGED_MODULES=$(echo "$CHANGED_FILES" | grep -E '^[^/]+/[^/]+/' | cut -d'/' -f1-2 | sort -u || true)
+          
+          if [ -z "$CHANGED_MODULES" ]; then
+            echo "No contract modules changed in this PR"
+            echo "modules=" >> $GITHUB_OUTPUT
+          else
+            echo "Changed modules:"
+            echo "$CHANGED_MODULES"
+            # Convert to comma-separated list
+            MODULES_LIST=$(echo "$CHANGED_MODULES" | tr '\n' ',' | sed 's/,$//')
+            echo "modules=$MODULES_LIST" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate API versions
+        if: steps.detect-changes.outputs.modules != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BASE_BRANCH: ${{ github.base_ref }}
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
+        run: |
+          set -e
+          
+          VALIDATION_FAILED=0
+          ERROR_MESSAGES=""
+          
+          # Split modules by comma
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            echo "=================================================="
+            echo "Validating module: $MODULE_PATH"
+            echo "=================================================="
+            
+            # Check if asyncapi.yml exists in this module
+            ASYNCAPI_FILE="$MODULE_PATH/asyncapi.yml"
+            if [ ! -f "$ASYNCAPI_FILE" ]; then
+              echo "⚠️  No asyncapi.yml found in $MODULE_PATH, skipping validation"
+              continue
+            fi
+            
+            # Extract API version from asyncapi.yml (info.version field)
+            API_VERSION=$(grep -A 5 '^info:' "$ASYNCAPI_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+            
+            if [ -z "$API_VERSION" ]; then
+              echo "❌ Could not extract API version from $ASYNCAPI_FILE"
+              VALIDATION_FAILED=1
+              ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Could not extract API version from asyncapi.yml"
+              continue
+            fi
+            
+            echo "📋 API version in PR: $API_VERSION"
+            
+            # Determine Maven package name from module path
+            # Convert path like "tenants/event" to "com.proactivedevs.contracts.tenants-event"
+            MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}"
+            
+            echo "📦 Maven package name: $PACKAGE_NAME"
+            
+            # Query GitHub Packages API for published versions
+            echo "🔍 Querying GitHub Packages for existing versions..."
+            
+            # URL-encode the package name (replace dots with %2E)
+            ENCODED_PACKAGE_NAME=$(echo "$PACKAGE_NAME" | sed 's/\./\%2E/g')
+            
+            # Query the GitHub Packages API
+            OWNER="${{ github.repository_owner }}"
+            API_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions"
+            
+            echo "API URL: $API_URL"
+            
+            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API_URL" || echo "[]")
+            
+            # Check if package exists (not a 404 error)
+            if echo "$RESPONSE" | grep -q '"message".*"Not Found"'; then
+              echo "📦 Package not yet published to GitHub Packages"
+              echo "✅ First version - validation passed"
+              continue
+            fi
+            
+            # Extract version names from response
+            PUBLISHED_VERSIONS=$(echo "$RESPONSE" | grep -o '"name":"[^"]*"' | cut -d'"' -f4 || echo "")
+            
+            if [ -z "$PUBLISHED_VERSIONS" ]; then
+              echo "📦 No published versions found"
+              echo "✅ First version - validation passed"
+              continue
+            fi
+            
+            echo "📚 Published versions found:"
+            echo "$PUBLISHED_VERSIONS"
+            
+            # Get latest stable version (non-SNAPSHOT)
+            LATEST_STABLE=$(echo "$PUBLISHED_VERSIONS" | grep -v 'SNAPSHOT' | sort -V | tail -n 1 || echo "")
+            
+            # Get latest SNAPSHOT version
+            LATEST_SNAPSHOT=$(echo "$PUBLISHED_VERSIONS" | grep 'SNAPSHOT' | sort -V | tail -n 1 || echo "")
+            
+            echo "🏷️  Latest stable version: ${LATEST_STABLE:-none}"
+            echo "🏷️  Latest snapshot version: ${LATEST_SNAPSHOT:-none}"
+            
+            # Apply validation rules based on target branch
+            if [ "$BASE_BRANCH" = "develop" ]; then
+              echo "🎯 Target branch: develop (feature → develop PR)"
+              echo "📏 Validation rule: API version must be > latest stable version"
+              
+              if [ -n "$LATEST_STABLE" ]; then
+                # Compare versions
+                if [ "$(printf '%s\n' "$LATEST_STABLE" "$API_VERSION" | sort -V | head -n1)" = "$API_VERSION" ] && [ "$API_VERSION" != "$LATEST_STABLE" ]; then
+                  echo "❌ Version validation FAILED"
+                  echo "   PR version ($API_VERSION) is not greater than latest stable ($LATEST_STABLE)"
+                  VALIDATION_FAILED=1
+                  ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Version $API_VERSION must be > $LATEST_STABLE (latest stable)"
+                else
+                  # Check if same as or older than an existing SNAPSHOT (optional - could overwrite)
+                  if [ -n "$LATEST_SNAPSHOT" ]; then
+                    SNAPSHOT_BASE=$(echo "$LATEST_SNAPSHOT" | sed 's/-SNAPSHOT$//')
+                    if [ "$API_VERSION" = "$SNAPSHOT_BASE" ]; then
+                      echo "✅ Version validation passed (will overwrite existing SNAPSHOT $LATEST_SNAPSHOT)"
+                    elif [ "$(printf '%s\n' "$SNAPSHOT_BASE" "$API_VERSION" | sort -V | head -n1)" = "$API_VERSION" ] && [ "$API_VERSION" != "$SNAPSHOT_BASE" ]; then
+                      echo "⚠️  Warning: PR version ($API_VERSION) is older than existing SNAPSHOT base ($SNAPSHOT_BASE)"
+                      echo "   This may cause confusion, but is technically allowed"
+                    else
+                      echo "✅ Version validation passed (new version > latest stable)"
+                    fi
+                  else
+                    echo "✅ Version validation passed (new version > latest stable)"
+                  fi
+                fi
+              else
+                echo "✅ Version validation passed (no stable version exists yet)"
+              fi
+              
+            elif [ "$BASE_BRANCH" = "main" ]; then
+              echo "🎯 Target branch: main (develop → main PR)"
+              echo "📏 Validation rule: API version must be > latest released stable version"
+              
+              if [ -n "$LATEST_STABLE" ]; then
+                # Check if version is greater than latest stable
+                if [ "$(printf '%s\n' "$LATEST_STABLE" "$API_VERSION" | sort -V | head -n1)" = "$API_VERSION" ] && [ "$API_VERSION" != "$LATEST_STABLE" ]; then
+                  echo "❌ Version validation FAILED"
+                  echo "   PR version ($API_VERSION) is not greater than latest stable ($LATEST_STABLE)"
+                  VALIDATION_FAILED=1
+                  ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Version $API_VERSION must be > $LATEST_STABLE (latest stable)"
+                elif [ "$API_VERSION" = "$LATEST_STABLE" ]; then
+                  echo "❌ Version validation FAILED"
+                  echo "   PR version ($API_VERSION) already exists as a released stable version"
+                  VALIDATION_FAILED=1
+                  ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Version $API_VERSION already released (must use new version)"
+                else
+                  echo "✅ Version validation passed (new version > latest stable)"
+                fi
+              else
+                echo "✅ Version validation passed (no stable version exists yet)"
+              fi
+            fi
+            
+            echo ""
+          done
+          
+          # Final summary
+          echo "=================================================="
+          echo "VALIDATION SUMMARY"
+          echo "=================================================="
+          
+          if [ $VALIDATION_FAILED -eq 1 ]; then
+            echo "❌ Version validation FAILED for one or more modules"
+            echo ""
+            echo "Errors:"
+            echo -e "$ERROR_MESSAGES"
+            exit 1
+          else
+            echo "✅ All version validations passed"
+          fi
