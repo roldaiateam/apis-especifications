@@ -1,0 +1,130 @@
+asyncapi: 3.0.0
+info:
+  title: Tenants Events API
+  version: 1.0.0
+  description: |
+    Tenants domain events published to RabbitMQ.
+    This specification defines the events emitted when tenant-related actions occur.
+  contact:
+    name: ProactiveDevs Team
+    email: team@proactivedevs.com
+
+servers:
+  development:
+    host: localhost:5672
+    protocol: amqp
+    description: Development RabbitMQ server
+    security:
+      - $ref: '#/components/securitySchemes/user-password'
+    tags:
+      - name: env:development
+        description: Development environment
+
+channels:
+  tenantsEvents:
+    address: tenants.events
+    messages:
+      tenantCreated:
+        $ref: '#/components/messages/TenantCreated'
+    description: Channel for tenant-related events
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: tenants.events
+          type: topic
+          durable: true
+          autoDelete: false
+        bindingVersion: 0.3.0
+
+operations:
+  publishTenantCreated:
+    action: send
+    channel:
+      $ref: '#/channels/tenantsEvents'
+    summary: Publish a tenant created event
+    description: |
+      This event is published when a new tenant is successfully created in the system.
+      Consumers can subscribe to this event to react to tenant creation.
+    messages:
+      - $ref: '#/components/messages/TenantCreated'
+    bindings:
+      amqp:
+        routingKey: tenant.created
+        cc: []
+        priority: 0
+        deliveryMode: 2
+        mandatory: false
+        timestamp: true
+        ack: true
+        bindingVersion: 0.3.0
+
+components:
+  messages:
+    TenantCreated:
+      name: TenantCreated
+      title: Tenant Created Event
+      summary: Event emitted when a new tenant is created
+      contentType: application/vnd.apache.avro+json
+      payload:
+        $ref: '#/components/schemas/TenantCreatedEvent'
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+
+  schemas:
+    TenantCreatedEvent:
+      type: object
+      description: Schema based on Avro definition in tenants-avro/v1/tenant-created-envelope.avsc
+      schemaFormat: application/vnd.apache.avro;version=1.9.0
+      schema:
+        type: record
+        name: TenantCreatedEvent
+        namespace: com.proactivedevs.contracts.tenants.v1
+        doc: Event emitted when a new tenant is created
+        fields:
+          - name: eventId
+            type: string
+            doc: Unique identifier for this event
+          - name: eventType
+            type: string
+            default: tenant.created
+            doc: Type of event
+          - name: timestamp
+            type: string
+            doc: ISO 8601 timestamp when the event occurred
+          - name: tenantId
+            type: string
+            doc: Unique identifier for the tenant
+          - name: tenantName
+            type: string
+            doc: Name of the tenant/organization
+          - name: userName
+            type: string
+            doc: Name of the user who created the tenant
+          - name: metadata
+            type:
+              - "null"
+              - type: map
+                values: string
+            default: null
+            doc: Optional metadata for extensibility
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        properties:
+          correlation-id:
+            type: string
+            description: Correlation ID for tracing requests across services
+          content-type:
+            type: string
+            enum:
+              - application/vnd.apache.avro+json
+              - application/vnd.apache.avro
+            description: Content type of the message payload
+
+  securitySchemes:
+    user-password:
+      type: userPassword
+      description: Username and password for RabbitMQ authentication

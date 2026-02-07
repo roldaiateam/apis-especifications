@@ -1,0 +1,8 @@
+---
+pipeline:
+  version: 3
+
+apis:
+  - name: "Tenants Events"
+    api-spec-type: event
+    definition-path: tenants/event
