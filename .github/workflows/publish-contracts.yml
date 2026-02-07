@@ -158,22 +158,56 @@ jobs:
             echo "✅ All validations passed"
           fi
 
-      - name: Set version for main branch (stable)
-        if: github.ref == 'refs/heads/main'
+      - name: Sync POM version from AsyncAPI specs
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        env:
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
-          # Extract current version from pom.xml and remove -SNAPSHOT
-          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          STABLE_VERSION=${CURRENT_VERSION%-SNAPSHOT}
-          echo "Setting stable version: $STABLE_VERSION"
-          mvn versions:set -DnewVersion=$STABLE_VERSION -DgenerateBackupPoms=false
-          echo "VERSION=$STABLE_VERSION" >> $GITHUB_ENV
-
-      - name: Set version for develop branch (snapshot)
-        if: github.ref == 'refs/heads/develop'
-        run: |
-          CURRENT_VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          echo "Using snapshot version: $CURRENT_VERSION"
-          echo "VERSION=$CURRENT_VERSION" >> $GITHUB_ENV
+          set -e
+          
+          echo "=================================================="
+          echo "SYNCING POM VERSIONS FROM ASYNCAPI SPECS"
+          echo "=================================================="
+          
+          # Split modules by comma
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          
+          # Find the first module with asyncapi.yml to get the API version (source of truth)
+          API_VERSION=""
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            ASYNCAPI_FILE="$MODULE_PATH/asyncapi.yml"
+            if [ -f "$ASYNCAPI_FILE" ]; then
+              API_VERSION=$(grep -A 5 '^info:' "$ASYNCAPI_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+              echo "📋 Found API version in $ASYNCAPI_FILE: $API_VERSION"
+              break
+            fi
+          done
+          
+          if [ -z "$API_VERSION" ]; then
+            echo "❌ Could not find API version in any asyncapi.yml"
+            exit 1
+          fi
+          
+          echo "✅ API version (source of truth): $API_VERSION"
+          
+          # Determine target Maven version based on branch
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            MAVEN_VERSION="$API_VERSION"
+            echo "🎯 Target branch: main → Maven version will be: $MAVEN_VERSION (stable)"
+          else
+            MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
+            echo "🎯 Target branch: develop → Maven version will be: $MAVEN_VERSION (snapshot)"
+          fi
+          
+          # Update POM version
+          echo "🔄 Updating POM version to: $MAVEN_VERSION"
+          mvn versions:set -DnewVersion=$MAVEN_VERSION -DgenerateBackupPoms=false
+          
+          # Save version for later steps
+          echo "VERSION=$MAVEN_VERSION" >> $GITHUB_ENV
+          echo "API_VERSION=$API_VERSION" >> $GITHUB_ENV
+          
+          echo "✅ POM version synchronized successfully"
 
       - name: Build and test
         if: steps.detect-changes.outputs.has_changes == 'true'
