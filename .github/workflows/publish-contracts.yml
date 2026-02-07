@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
   publish:
@@ -268,6 +269,7 @@ jobs:
 
       - name: Find PR number and create comment
         if: steps.detect-changes.outputs.has_changes == 'true'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -275,33 +277,41 @@ jobs:
             const fs = require('fs');
             const comment = fs.readFileSync('/tmp/comment.txt', 'utf8');
             
-            // Find PRs associated with this commit
-            console.log('Looking for PR associated with commit:', context.sha);
-            
-            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              commit_sha: context.sha
-            });
-            
-            if (pulls.length === 0) {
-              console.log('No PR found associated with this commit. Skipping comment.');
-              return;
+            try {
+              // Find PRs associated with this commit
+              console.log('Looking for PR associated with commit:', context.sha);
+              
+              const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: context.sha
+              });
+              
+              if (pulls.length === 0) {
+                console.log('⚠️  No PR found associated with this commit. Skipping comment.');
+                console.log('This is normal for direct pushes to develop/main without a PR.');
+                return;
+              }
+              
+              // Get the first PR (should be the one that was just merged)
+              const pr = pulls[0];
+              console.log(`Found PR #${pr.number}: ${pr.title}`);
+              
+              // Post comment on the PR
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: comment
+              });
+              
+              console.log(`✅ Comment posted successfully on PR #${pr.number}`);
+            } catch (error) {
+              console.error('❌ Failed to post PR comment:', error.message);
+              console.log('This is not critical - deployment was successful.');
+              console.log('Dependency information:');
+              console.log(comment);
             }
-            
-            // Get the first PR (should be the one that was just merged)
-            const pr = pulls[0];
-            console.log(`Found PR #${pr.number}: ${pr.title}`);
-            
-            // Post comment on the PR
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: pr.number,
-              body: comment
-            });
-            
-            console.log(`✅ Comment posted successfully on PR #${pr.number}`);
 
       - name: Create Git tag (main only)
         if: github.ref == 'refs/heads/main' && steps.detect-changes.outputs.has_changes == 'true'
