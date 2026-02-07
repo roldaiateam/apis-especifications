@@ -232,7 +232,7 @@ jobs:
           echo "Generated comment:"
           cat /tmp/comment.txt
 
-      - name: Create commit comment
+      - name: Find PR number and create comment
         if: steps.detect-changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
@@ -241,12 +241,33 @@ jobs:
             const fs = require('fs');
             const comment = fs.readFileSync('/tmp/comment.txt', 'utf8');
             
-            await github.rest.repos.createCommitComment({
+            // Find PRs associated with this commit
+            console.log('Looking for PR associated with commit:', context.sha);
+            
+            const { data: pulls } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              commit_sha: context.sha,
+              commit_sha: context.sha
+            });
+            
+            if (pulls.length === 0) {
+              console.log('No PR found associated with this commit. Skipping comment.');
+              return;
+            }
+            
+            // Get the first PR (should be the one that was just merged)
+            const pr = pulls[0];
+            console.log(`Found PR #${pr.number}: ${pr.title}`);
+            
+            // Post comment on the PR
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
               body: comment
             });
+            
+            console.log(`✅ Comment posted successfully on PR #${pr.number}`);
 
       - name: Create Git tag (main only)
         if: github.ref == 'refs/heads/main' && steps.detect-changes.outputs.has_changes == 'true'
