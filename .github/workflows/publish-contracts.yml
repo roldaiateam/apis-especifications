@@ -78,18 +78,38 @@ jobs:
             echo "Validating module: $MODULE_PATH"
             echo "=================================================="
             
-            # Check if asyncapi.yml exists in this module
-            ASYNCAPI_FILE="$MODULE_PATH/asyncapi.yml"
-            if [ ! -f "$ASYNCAPI_FILE" ]; then
-              echo "⚠️  No asyncapi.yml found in $MODULE_PATH, skipping validation"
+            # Determine API spec type from metadata.yml
+            METADATA_FILE="$MODULE_PATH/metadata.yml"
+            if [ ! -f "$METADATA_FILE" ]; then
+              echo "⚠️  No metadata.yml found in $MODULE_PATH, skipping validation"
               continue
             fi
             
-            # Extract API version from asyncapi.yml
-            API_VERSION=$(grep -A 5 '^info:' "$ASYNCAPI_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+            API_SPEC_TYPE=$(grep '^api-spec-type:' "$METADATA_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+            echo "📋 API spec type: $API_SPEC_TYPE"
+            
+            # Determine spec file based on type
+            if [ "$API_SPEC_TYPE" = "event" ]; then
+              SPEC_FILE="$MODULE_PATH/asyncapi.yml"
+            elif [ "$API_SPEC_TYPE" = "rest" ]; then
+              SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
+            else
+              echo "❌ Unknown api-spec-type: $API_SPEC_TYPE"
+              VALIDATION_FAILED=1
+              ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Unknown api-spec-type"
+              continue
+            fi
+            
+            if [ ! -f "$SPEC_FILE" ]; then
+              echo "⚠️  No spec file found at $SPEC_FILE, skipping validation"
+              continue
+            fi
+            
+            # Extract API version from spec file
+            API_VERSION=$(grep -A 5 '^info:' "$SPEC_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
             
             if [ -z "$API_VERSION" ]; then
-              echo "❌ Could not extract API version from $ASYNCAPI_FILE"
+              echo "❌ Could not extract API version from $SPEC_FILE"
               VALIDATION_FAILED=1
               ERROR_MESSAGES="${ERROR_MESSAGES}\n- ❌ $MODULE_PATH: Could not extract API version"
               continue
@@ -159,56 +179,70 @@ jobs:
             echo "✅ All validations passed"
           fi
 
-      - name: Sync POM version from AsyncAPI specs
+      - name: Sync POM version from API specs
         if: steps.detect-changes.outputs.has_changes == 'true'
         env:
           MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
-          set -e
-          
-          echo "=================================================="
-          echo "SYNCING POM VERSIONS FROM ASYNCAPI SPECS"
-          echo "=================================================="
-          
-          # Split modules by comma
-          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
-          
-          # Find the first module with asyncapi.yml to get the API version (source of truth)
-          API_VERSION=""
-          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
-            ASYNCAPI_FILE="$MODULE_PATH/asyncapi.yml"
-            if [ -f "$ASYNCAPI_FILE" ]; then
-              API_VERSION=$(grep -A 5 '^info:' "$ASYNCAPI_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
-              echo "📋 Found API version in $ASYNCAPI_FILE: $API_VERSION"
-              break
+           set -e
+           
+           echo "=================================================="
+           echo "SYNCING POM VERSIONS FROM API SPECS"
+           echo "=================================================="
+           
+           # Split modules by comma
+           IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+           
+           # Find the first module with a spec file to get the API version (source of truth)
+           API_VERSION=""
+           for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+             METADATA_FILE="$MODULE_PATH/metadata.yml"
+             if [ ! -f "$METADATA_FILE" ]; then
+               continue
+             fi
+             
+             API_SPEC_TYPE=$(grep '^api-spec-type:' "$METADATA_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+             
+             if [ "$API_SPEC_TYPE" = "event" ]; then
+               SPEC_FILE="$MODULE_PATH/asyncapi.yml"
+             elif [ "$API_SPEC_TYPE" = "rest" ]; then
+               SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
+             else
+               continue
+             fi
+             
+             if [ -f "$SPEC_FILE" ]; then
+               API_VERSION=$(grep -A 5 '^info:' "$SPEC_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+               echo "📋 Found API version in $SPEC_FILE: $API_VERSION"
+               break
+             fi
+           done
+           
+            if [ -z "$API_VERSION" ]; then
+              echo "❌ Could not find API version in any spec file"
+              exit 1
             fi
-          done
-          
-          if [ -z "$API_VERSION" ]; then
-            echo "❌ Could not find API version in any asyncapi.yml"
-            exit 1
-          fi
-          
-          echo "✅ API version (source of truth): $API_VERSION"
-          
-          # Determine target Maven version based on branch
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            MAVEN_VERSION="$API_VERSION"
-            echo "🎯 Target branch: main → Maven version will be: $MAVEN_VERSION (stable)"
-          else
-            MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
-            echo "🎯 Target branch: develop → Maven version will be: $MAVEN_VERSION (snapshot)"
-          fi
-          
-          # Update POM version
-          echo "🔄 Updating POM version to: $MAVEN_VERSION"
-          mvn versions:set -DnewVersion=$MAVEN_VERSION -DgenerateBackupPoms=false
-          
-          # Save version for later steps
-          echo "VERSION=$MAVEN_VERSION" >> $GITHUB_ENV
-          echo "API_VERSION=$API_VERSION" >> $GITHUB_ENV
-          
-          echo "✅ POM version synchronized successfully"
+            
+            echo "✅ API version (source of truth): $API_VERSION"
+            
+            # Determine target Maven version based on branch
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              MAVEN_VERSION="$API_VERSION"
+              echo "🎯 Target branch: main → Maven version will be: $MAVEN_VERSION (stable)"
+            else
+              MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
+              echo "🎯 Target branch: develop → Maven version will be: $MAVEN_VERSION (snapshot)"
+            fi
+            
+            # Update POM version
+            echo "🔄 Updating POM version to: $MAVEN_VERSION"
+            mvn versions:set -DnewVersion=$MAVEN_VERSION -DgenerateBackupPoms=false
+            
+            # Save version for later steps
+            echo "VERSION=$MAVEN_VERSION" >> $GITHUB_ENV
+            echo "API_VERSION=$API_VERSION" >> $GITHUB_ENV
+            
+            echo "✅ POM version synchronized successfully"
 
       - name: Build and test
         if: steps.detect-changes.outputs.has_changes == 'true'
@@ -242,8 +276,14 @@ jobs:
           IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
           
           for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
-            # Check if asyncapi.yml exists
-            if [ -f "$MODULE_PATH/asyncapi.yml" ]; then
+            # Check if metadata.yml exists
+            METADATA_FILE="$MODULE_PATH/metadata.yml"
+            if [ ! -f "$METADATA_FILE" ]; then
+              continue
+            fi
+            
+            # Check if this module has a spec file (asyncapi.yml or openapi-rest.yml)
+            if [ -f "$MODULE_PATH/asyncapi.yml" ] || [ -f "$MODULE_PATH/openapi-rest.yml" ]; then
               # Get artifact ID from module path
               MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
               ARTIFACT_ID="${MODULE_NAME}"
