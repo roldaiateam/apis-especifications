@@ -280,13 +280,60 @@ jobs:
 
       - name: Build and test
         if: steps.detect-changes.outputs.has_changes == 'true'
-        run: mvn clean verify
+        env:
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
+        run: |
+          # Build only changed modules
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          MODULE_LIST=""
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            if [ -f "$MODULE_PATH/pom.xml" ]; then
+              MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+              ARTIFACT_ID="${MODULE_NAME}-stable"
+              if [ -z "$MODULE_LIST" ]; then
+                MODULE_LIST=":$ARTIFACT_ID"
+              else
+                MODULE_LIST="$MODULE_LIST,:$ARTIFACT_ID"
+              fi
+            fi
+          done
+          
+          if [ -n "$MODULE_LIST" ]; then
+            echo "Building modules: $MODULE_LIST"
+            mvn clean verify -pl "$MODULE_LIST"
+          else
+            echo "No valid modules to build"
+            exit 1
+          fi
 
       - name: Deploy to GitHub Packages
         if: steps.detect-changes.outputs.has_changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: mvn deploy -DskipTests
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
+        run: |
+          # Deploy only changed modules
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          MODULE_LIST=""
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            if [ -f "$MODULE_PATH/pom.xml" ]; then
+              MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+              ARTIFACT_ID="${MODULE_NAME}-stable"
+              if [ -z "$MODULE_LIST" ]; then
+                MODULE_LIST=":$ARTIFACT_ID"
+              else
+                MODULE_LIST="$MODULE_LIST,:$ARTIFACT_ID"
+              fi
+            fi
+          done
+          
+          if [ -n "$MODULE_LIST" ]; then
+            echo "Deploying modules: $MODULE_LIST"
+            mvn deploy -pl "$MODULE_LIST" -DskipTests
+          else
+            echo "No valid modules to deploy"
+            exit 1
+          fi
 
       - name: Generate dependency info
         if: steps.detect-changes.outputs.has_changes == 'true'
