@@ -27,10 +27,37 @@ jobs:
               content: 'rocket'
             });
 
+      - name: Post initial progress comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const comment = `## 🚀 Generando Versión Unstable
+            
+            Tu solicitud está siendo procesada...
+            
+            📋 **Estado:** En progreso
+            🔗 **Logs del workflow:** [Ver ejecución](${runUrl})
+            
+            _Este comentario se actualizará cuando el proceso termine._
+            `;
+            
+            const { data: newComment } = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            
+            // Save comment ID for later update
+            core.setOutput('comment_id', newComment.id);
+
       - name: Parse command arguments
         id: parse-args
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
         run: |
-          COMMENT_BODY="${{ github.event.comment.body }}"
           echo "Comment body: $COMMENT_BODY"
           
           # Extract --name argument
@@ -271,7 +298,7 @@ jobs:
           
           mvn deploy -pl ":$UNSTABLE_ARTIFACT_ID" -DskipTests
 
-      - name: Comment success on PR
+      - name: Update comment with success
         if: success()
         uses: actions/github-script@v7
         env:
@@ -279,6 +306,7 @@ jobs:
           UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
           UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
           SPEC_TYPE: ${{ steps.extract-version.outputs.spec_type }}
+          COMMENT_ID: ${{ steps.post-initial-progress-comment.outputs.comment_id }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -286,10 +314,12 @@ jobs:
             const artifactId = process.env.UNSTABLE_ARTIFACT_ID;
             const version = process.env.UNSTABLE_VERSION;
             const specType = process.env.SPEC_TYPE;
+            const commentId = process.env.COMMENT_ID;
             
             const typeLabel = specType === 'event' ? 'AsyncAPI' : 'OpenAPI';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             
-            const comment = `## Unstable API Generated Successfully
+            const comment = `## ✅ Versión Unstable Generada Exitosamente
             
             ### ${apiName} (${typeLabel})
             **Version:** \`${version}\`
@@ -309,32 +339,59 @@ jobs:
             ⚠️ **Nota:** Esta es una versión **inestable** generada desde este PR. Será automáticamente eliminada cuando el PR sea mergeado.
             
             📦 **Ubicación:** [GitHub Packages](https://github.com/${context.repo.owner}/${context.repo.repo}/packages)
+            🔗 **Logs del workflow:** [Ver ejecución](${runUrl})
             `;
             
-            await github.rest.issues.createComment({
+            await github.rest.issues.updateComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              comment_id: commentId,
               body: comment
             });
 
-      - name: Comment error on PR
+      - name: Update comment with error
         if: failure()
         uses: actions/github-script@v7
+        env:
+          COMMENT_ID: ${{ steps.post-initial-progress-comment.outputs.comment_id }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const comment = `## ❌ Error al Generar API Unstable
+            const commentId = process.env.COMMENT_ID;
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const comment = `## ❌ Error al Generar Versión Unstable
             
             Hubo un error al intentar generar la versión unstable de la API.
             
             Por favor, revisa los logs del workflow para más detalles:
-            [Ver logs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            🔗 [Ver logs de ejecución](${runUrl})
             `;
             
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: comment
-            });
+            // Try to update the initial comment, if it exists
+            if (commentId) {
+              try {
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  comment_id: commentId,
+                  body: comment
+                });
+              } catch (error) {
+                // If update fails, create a new comment
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.issue.number,
+                  body: comment
+                });
+              }
+            } else {
+              // No initial comment, create a new one
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }
