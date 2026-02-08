@@ -13,6 +13,7 @@
     </parent>
 
     <artifactId>tenants-rest-stable</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Tenants REST Contract</name>
