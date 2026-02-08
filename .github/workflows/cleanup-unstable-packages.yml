@@ -76,8 +76,9 @@ jobs:
           echo "SEARCHING AND DELETING UNSTABLE PACKAGES"
           echo "=================================================="
           
-          DELETED_COUNT=0
-          DELETED_PACKAGES=""
+          # Initialize temp files
+          echo "0" > /tmp/deleted_count.txt
+          echo "" > /tmp/deleted_packages.txt
           
           # Split modules by comma
           IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
@@ -107,11 +108,11 @@ jobs:
               continue
             fi
             
-            # Extract versions that match the branch pattern
+            # Extract versions that match the branch pattern and save as JSON lines
             # Pattern: *-{branch-name}-SNAPSHOT
-            MATCHING_VERSIONS=$(echo "$RESPONSE" | jq -r ".[] | select(.name | contains(\"$BRANCH_NAME-SNAPSHOT\")) | {id: .id, name: .name}" || echo "")
+            MATCHING_VERSIONS=$(echo "$RESPONSE" | jq -c ".[] | select(.name | contains(\"$BRANCH_NAME-SNAPSHOT\")) | {id: .id, name: .name}" || echo "")
             
-            if [ -z "$MATCHING_VERSIONS" ] || [ "$MATCHING_VERSIONS" = "null" ]; then
+            if [ -z "$MATCHING_VERSIONS" ]; then
               echo "✅ No unstable versions found for branch $BRANCH_NAME"
               continue
             fi
@@ -119,13 +120,18 @@ jobs:
             echo "Found matching versions:"
             echo "$MATCHING_VERSIONS"
             
-            # Delete each version
-            echo "$MATCHING_VERSIONS" | jq -r '.id' | while read VERSION_ID; do
-              if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+            # Delete each version - using process substitution to avoid subshell issue
+            while IFS= read -r VERSION_JSON; do
+              if [ -z "$VERSION_JSON" ]; then
                 continue
               fi
               
-              VERSION_NAME=$(echo "$MATCHING_VERSIONS" | jq -r "select(.id == $VERSION_ID) | .name")
+              VERSION_ID=$(echo "$VERSION_JSON" | jq -r '.id')
+              VERSION_NAME=$(echo "$VERSION_JSON" | jq -r '.name')
+              
+              if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+                continue
+              fi
               
               echo "🗑️  Deleting version: $VERSION_NAME (ID: $VERSION_ID)"
               
@@ -140,24 +146,27 @@ jobs:
               
               if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
                 echo "✅ Successfully deleted version $VERSION_NAME"
-                DELETED_COUNT=$((DELETED_COUNT + 1))
-                DELETED_PACKAGES="${DELETED_PACKAGES}\n- ${PACKAGE_NAME}:${VERSION_NAME}"
+                
+                # Increment counter in file
+                CURRENT_COUNT=$(cat /tmp/deleted_count.txt)
+                NEW_COUNT=$((CURRENT_COUNT + 1))
+                echo "$NEW_COUNT" > /tmp/deleted_count.txt
+                
+                # Append to deleted packages list
+                echo "- ${PACKAGE_NAME}:${VERSION_NAME}" >> /tmp/deleted_packages.txt
               else
                 echo "⚠️  Failed to delete version $VERSION_NAME (HTTP $HTTP_CODE)"
                 echo "Response: $(echo "$DELETE_RESPONSE" | head -n -1)"
               fi
-            done
+            done < <(echo "$MATCHING_VERSIONS")
           done
           
           echo ""
           echo "=================================================="
           echo "CLEANUP SUMMARY"
           echo "=================================================="
-          echo "Total versions deleted: $DELETED_COUNT"
-          
-          # Save results for PR comment
-          echo "$DELETED_COUNT" > /tmp/deleted_count.txt
-          echo -e "$DELETED_PACKAGES" > /tmp/deleted_packages.txt
+          FINAL_COUNT=$(cat /tmp/deleted_count.txt)
+          echo "Total versions deleted: $FINAL_COUNT"
 
       - name: Comment cleanup result on PR
         uses: actions/github-script@v7
@@ -191,7 +200,7 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: context.payload.pull_request.number,
               body: comment
             });
 
@@ -214,6 +223,6 @@ jobs:
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: context.payload.pull_request.number,
               body: comment
             });
