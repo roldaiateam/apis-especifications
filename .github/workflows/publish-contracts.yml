@@ -194,10 +194,8 @@ jobs:
            # Split modules by comma
            IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
            
-           # Create associative arrays to store module versions and names
-           declare -A MODULE_VERSIONS
-           declare -A MODULE_NAMES
-           declare -A MODULE_ARTIFACT_IDS
+           # Clear the temporary file for storing module info
+           > /tmp/module_versions.txt
            
            for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
              echo ""
@@ -256,25 +254,26 @@ jobs:
              ARTIFACT_ID="${MODULE_NAME}-stable"
              echo "📦 Artifact ID: $ARTIFACT_ID"
              
-             # Update ONLY this module's POM version
-             echo "🔄 Updating $ARTIFACT_ID to version $MAVEN_VERSION"
-             mvn versions:set -DnewVersion=$MAVEN_VERSION -pl ":$ARTIFACT_ID" -DgenerateBackupPoms=false
+              # Update ONLY this module's POM version directly with sed
+              POM_FILE="$MODULE_PATH/pom.xml"
+              echo "🔄 Updating $POM_FILE version to $MAVEN_VERSION"
+              
+              # Use sed to replace the version line that comes after <artifactId>
+              # This pattern looks for <artifactId>...<version>X.Y.Z</version>
+              sed -i.bak "/<artifactId>$ARTIFACT_ID<\/artifactId>/,/<version>/ s|<version>[^<]*</version>|<version>$MAVEN_VERSION</version>|" "$POM_FILE"
+              rm -f "$POM_FILE.bak"
+              
+              echo "✅ Updated version in $POM_FILE"
              
-             # Store for later use in PR comment (pipe-separated for bash compatibility)
-             MODULE_VERSIONS["$MODULE_PATH"]="$MAVEN_VERSION"
-             MODULE_NAMES["$MODULE_PATH"]="$API_NAME"
-             MODULE_ARTIFACT_IDS["$MODULE_PATH"]="$ARTIFACT_ID"
+             # Store module info for PR comment (append to temp file)
+             echo "${MODULE_PATH}|${API_NAME}|${ARTIFACT_ID}|${MAVEN_VERSION}" >> /tmp/module_versions.txt
              
              echo "✅ $ARTIFACT_ID synchronized to $MAVEN_VERSION"
            done
            
-           # Export module info for PR comment step (using a temporary file)
-           echo "📝 Saving module info for PR comment generation..."
-           {
-             for MODULE_PATH in "${!MODULE_VERSIONS[@]}"; do
-               echo "${MODULE_PATH}|${MODULE_NAMES[$MODULE_PATH]}|${MODULE_ARTIFACT_IDS[$MODULE_PATH]}|${MODULE_VERSIONS[$MODULE_PATH]}"
-             done
-           } | sort > /tmp/module_versions.txt
+           # Sort the module info file alphabetically by module path
+           echo "📝 Sorting module info for PR comment generation..."
+           sort -o /tmp/module_versions.txt /tmp/module_versions.txt
            
            echo ""
            echo "✅ All POM versions synchronized successfully"

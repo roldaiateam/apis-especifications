@@ -13,6 +13,7 @@
     </parent>
 
     <artifactId>tenants-event-stable</artifactId>
+    <version>1.0.3-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Tenants Event Contract</name>
