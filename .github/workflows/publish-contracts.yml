@@ -180,7 +180,7 @@ jobs:
             echo "✅ All validations passed"
           fi
 
-      - name: Sync POM version from API specs
+      - name: Sync POM versions from API specs (per module)
         if: steps.detect-changes.outputs.has_changes == 'true'
         env:
           MODULES: ${{ steps.detect-changes.outputs.modules }}
@@ -188,63 +188,96 @@ jobs:
            set -e
            
            echo "=================================================="
-           echo "SYNCING POM VERSIONS FROM API SPECS"
+           echo "SYNCING POM VERSIONS FROM API SPECS (PER MODULE)"
            echo "=================================================="
            
            # Split modules by comma
            IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
            
-           # Find the first module with a spec file to get the API version (source of truth)
-           API_VERSION=""
+           # Create associative arrays to store module versions and names
+           declare -A MODULE_VERSIONS
+           declare -A MODULE_NAMES
+           declare -A MODULE_ARTIFACT_IDS
+           
            for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+             echo ""
+             echo "Processing module: $MODULE_PATH"
+             
              METADATA_FILE="$MODULE_PATH/metadata.yml"
              if [ ! -f "$METADATA_FILE" ]; then
+               echo "⚠️  No metadata.yml found, skipping"
                continue
              fi
              
+             # Extract API spec type
              API_SPEC_TYPE=$(grep '^api-spec-type:' "$METADATA_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+             echo "📋 API spec type: $API_SPEC_TYPE"
              
+             # Determine spec file based on type
              if [ "$API_SPEC_TYPE" = "event" ]; then
                SPEC_FILE="$MODULE_PATH/asyncapi.yml"
              elif [ "$API_SPEC_TYPE" = "rest" ]; then
                SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
              else
+               echo "⚠️  Unknown api-spec-type, skipping"
                continue
              fi
              
-              if [ -f "$SPEC_FILE" ]; then
-                # Use sed to handle both spaces and tabs for indentation
-                API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
-                echo "📋 Found API version in $SPEC_FILE: $API_VERSION"
-                break
-              fi
+             if [ ! -f "$SPEC_FILE" ]; then
+               echo "⚠️  Spec file not found: $SPEC_FILE, skipping"
+               continue
+             fi
+             
+             # Extract API version from spec file
+             API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
+             
+             if [ -z "$API_VERSION" ]; then
+               echo "❌ Could not extract API version from $SPEC_FILE"
+               exit 1
+             fi
+             
+             echo "📋 API version from spec: $API_VERSION"
+             
+             # Extract API name from metadata.yml (for later use in PR comment)
+             API_NAME=$(grep -A 1 '^api:' "$METADATA_FILE" | grep 'name:' | sed 's/.*name:[[:space:]]*//' | tr -d '"' | tr -d "'")
+             echo "📋 API name: $API_NAME"
+             
+             # Determine target Maven version based on branch
+             if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+               MAVEN_VERSION="$API_VERSION"
+               echo "🎯 Target branch: main → Maven version: $MAVEN_VERSION (stable)"
+             else
+               MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
+               echo "🎯 Target branch: develop → Maven version: $MAVEN_VERSION (snapshot)"
+             fi
+             
+             # Calculate artifact ID
+             MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+             ARTIFACT_ID="${MODULE_NAME}-stable"
+             echo "📦 Artifact ID: $ARTIFACT_ID"
+             
+             # Update ONLY this module's POM version
+             echo "🔄 Updating $ARTIFACT_ID to version $MAVEN_VERSION"
+             mvn versions:set -DnewVersion=$MAVEN_VERSION -pl ":$ARTIFACT_ID" -DgenerateBackupPoms=false
+             
+             # Store for later use in PR comment (pipe-separated for bash compatibility)
+             MODULE_VERSIONS["$MODULE_PATH"]="$MAVEN_VERSION"
+             MODULE_NAMES["$MODULE_PATH"]="$API_NAME"
+             MODULE_ARTIFACT_IDS["$MODULE_PATH"]="$ARTIFACT_ID"
+             
+             echo "✅ $ARTIFACT_ID synchronized to $MAVEN_VERSION"
            done
            
-            if [ -z "$API_VERSION" ]; then
-              echo "❌ Could not find API version in any spec file"
-              exit 1
-            fi
-            
-            echo "✅ API version (source of truth): $API_VERSION"
-            
-            # Determine target Maven version based on branch
-            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-              MAVEN_VERSION="$API_VERSION"
-              echo "🎯 Target branch: main → Maven version will be: $MAVEN_VERSION (stable)"
-            else
-              MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
-              echo "🎯 Target branch: develop → Maven version will be: $MAVEN_VERSION (snapshot)"
-            fi
-            
-            # Update POM version
-            echo "🔄 Updating POM version to: $MAVEN_VERSION"
-            mvn versions:set -DnewVersion=$MAVEN_VERSION -DgenerateBackupPoms=false
-            
-            # Save version for later steps
-            echo "VERSION=$MAVEN_VERSION" >> $GITHUB_ENV
-            echo "API_VERSION=$API_VERSION" >> $GITHUB_ENV
-            
-            echo "✅ POM version synchronized successfully"
+           # Export module info for PR comment step (using a temporary file)
+           echo "📝 Saving module info for PR comment generation..."
+           {
+             for MODULE_PATH in "${!MODULE_VERSIONS[@]}"; do
+               echo "${MODULE_PATH}|${MODULE_NAMES[$MODULE_PATH]}|${MODULE_ARTIFACT_IDS[$MODULE_PATH]}|${MODULE_VERSIONS[$MODULE_PATH]}"
+             done
+           } | sort > /tmp/module_versions.txt
+           
+           echo ""
+           echo "✅ All POM versions synchronized successfully"
 
       - name: Build and test
         if: steps.detect-changes.outputs.has_changes == 'true'
@@ -259,46 +292,40 @@ jobs:
       - name: Generate dependency info
         if: steps.detect-changes.outputs.has_changes == 'true'
         id: dependency-info
-        env:
-          MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
           COMMENT="## 📦 Contracts Published Successfully\n\n"
           
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            COMMENT="${COMMENT}**Release version:** \`$VERSION\` (stable)\n\n"
-          else
-            COMMENT="${COMMENT}**Snapshot version:** \`$VERSION\`\n\n"
+          # Read module info from the file created in the previous step
+          if [ ! -f /tmp/module_versions.txt ]; then
+            echo "⚠️  No module versions file found, skipping PR comment generation"
+            exit 0
           fi
           
-          COMMENT="${COMMENT}### Maven Dependencies\n\n"
-          COMMENT="${COMMENT}Add the following dependencies to your \`pom.xml\`:\n\n"
-          COMMENT="${COMMENT}\`\`\`xml\n"
-          
-          # Split modules by comma
-          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
-          
-          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
-            # Check if metadata.yml exists
-            METADATA_FILE="$MODULE_PATH/metadata.yml"
-            if [ ! -f "$METADATA_FILE" ]; then
-              continue
+          # File is already sorted alphabetically by module path
+          while IFS='|' read -r MODULE_PATH API_NAME ARTIFACT_ID MAVEN_VERSION; do
+            echo "Processing: $API_NAME ($MODULE_PATH)"
+            
+            # Determine API type label
+            if [[ "$MODULE_PATH" == *"/event" ]]; then
+              TYPE_LABEL="AsyncAPI"
+            elif [[ "$MODULE_PATH" == *"/rest" ]]; then
+              TYPE_LABEL="OpenAPI"
+            else
+              TYPE_LABEL="API"
             fi
             
-            # Check if this module has a spec file (asyncapi.yml or openapi-rest.yml)
-            if [ -f "$MODULE_PATH/asyncapi.yml" ] || [ -f "$MODULE_PATH/openapi-rest.yml" ]; then
-              # Get artifact ID from module path with -stable suffix
-              MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-              ARTIFACT_ID="${MODULE_NAME}-stable"
-              
-              COMMENT="${COMMENT}<dependency>\n"
-              COMMENT="${COMMENT}    <groupId>com.proactivedevs.contracts</groupId>\n"
-              COMMENT="${COMMENT}    <artifactId>${ARTIFACT_ID}</artifactId>\n"
-              COMMENT="${COMMENT}    <version>${VERSION}</version>\n"
-              COMMENT="${COMMENT}</dependency>\n"
-            fi
-          done
+            # Add section for this API
+            COMMENT="${COMMENT}### ${API_NAME} (${TYPE_LABEL})\n"
+            COMMENT="${COMMENT}**Version:** \`${MAVEN_VERSION}\`\n\n"
+            COMMENT="${COMMENT}\`\`\`xml\n"
+            COMMENT="${COMMENT}<dependency>\n"
+            COMMENT="${COMMENT}    <groupId>com.proactivedevs.contracts</groupId>\n"
+            COMMENT="${COMMENT}    <artifactId>${ARTIFACT_ID}</artifactId>\n"
+            COMMENT="${COMMENT}    <version>${MAVEN_VERSION}</version>\n"
+            COMMENT="${COMMENT}</dependency>\n"
+            COMMENT="${COMMENT}\`\`\`\n\n"
+          done < /tmp/module_versions.txt
           
-          COMMENT="${COMMENT}\`\`\`\n\n"
           COMMENT="${COMMENT}---\n\n"
           COMMENT="${COMMENT}**📚 Package location:** [GitHub Packages](https://github.com/${{ github.repository }}/packages)\n"
           
@@ -355,10 +382,18 @@ jobs:
               console.log(comment);
             }
 
-      - name: Create Git tag (main only)
+      - name: Create Git tags (main only)
         if: github.ref == 'refs/heads/main' && steps.detect-changes.outputs.has_changes == 'true'
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git tag -a "v$VERSION" -m "Release version $VERSION"
-          git push origin "v$VERSION"
+          
+          # Read module versions and create individual tags
+          while IFS='|' read -r MODULE_PATH API_NAME ARTIFACT_ID MAVEN_VERSION; do
+            TAG_NAME="${ARTIFACT_ID}-v${MAVEN_VERSION}"
+            echo "Creating tag: $TAG_NAME"
+            git tag -a "$TAG_NAME" -m "Release $API_NAME version $MAVEN_VERSION"
+            git push origin "$TAG_NAME"
+          done < /tmp/module_versions.txt
+          
+          echo "✅ All tags created and pushed"
