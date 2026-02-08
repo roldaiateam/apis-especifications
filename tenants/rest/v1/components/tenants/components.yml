@@ -51,7 +51,6 @@ components:
         - username
         - email
         - password
-        - birthDate
         - companyName
     
     CreateTenantResponse:
