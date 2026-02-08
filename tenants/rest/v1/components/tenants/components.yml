@@ -47,7 +47,6 @@ components:
           example: "Acme Corporation"
       required:
         - firstName
-        - lastName
         - username
         - email
         - password
