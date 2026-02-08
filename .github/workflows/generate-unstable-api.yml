@@ -298,7 +298,7 @@ jobs:
           
           mvn deploy -pl ":$UNSTABLE_ARTIFACT_ID" -DskipTests
 
-      - name: Update comment with success
+      - name: Post success comment
         if: success()
         uses: actions/github-script@v7
         env:
@@ -306,7 +306,6 @@ jobs:
           UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
           UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
           SPEC_TYPE: ${{ steps.extract-version.outputs.spec_type }}
-          COMMENT_ID: ${{ steps.post-initial-progress-comment.outputs.comment_id }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -314,7 +313,6 @@ jobs:
             const artifactId = process.env.UNSTABLE_ARTIFACT_ID;
             const version = process.env.UNSTABLE_VERSION;
             const specType = process.env.SPEC_TYPE;
-            const commentId = process.env.COMMENT_ID;
             
             const typeLabel = specType === 'event' ? 'AsyncAPI' : 'OpenAPI';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
@@ -342,22 +340,19 @@ jobs:
             🔗 **Logs del workflow:** [Ver ejecución](${runUrl})
             `;
             
-            await github.rest.issues.updateComment({
+            await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              comment_id: commentId,
+              issue_number: context.issue.number,
               body: comment
             });
 
-      - name: Update comment with error
+      - name: Post error comment
         if: failure()
         uses: actions/github-script@v7
-        env:
-          COMMENT_ID: ${{ steps.post-initial-progress-comment.outputs.comment_id }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const commentId = process.env.COMMENT_ID;
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             
             const comment = `## ❌ Error al Generar Versión Unstable
@@ -368,30 +363,9 @@ jobs:
             🔗 [Ver logs de ejecución](${runUrl})
             `;
             
-            // Try to update the initial comment, if it exists
-            if (commentId) {
-              try {
-                await github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: commentId,
-                  body: comment
-                });
-              } catch (error) {
-                // If update fails, create a new comment
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: comment
-                });
-              }
-            } else {
-              // No initial comment, create a new one
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: comment
-              });
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
