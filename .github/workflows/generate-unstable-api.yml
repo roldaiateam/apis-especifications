@@ -289,7 +289,7 @@ jobs:
             
             const typeLabel = specType === 'event' ? 'AsyncAPI' : 'OpenAPI';
             
-            const comment = `## 🚀 Unstable API Generated Successfully
+            const comment = `## Unstable API Generated Successfully
             
             ### ${apiName} (${typeLabel})
             **Version:** \`${version}\`
