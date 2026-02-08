@@ -120,45 +120,45 @@ jobs:
             echo "Found matching versions:"
             echo "$MATCHING_VERSIONS"
             
-            # Delete each version - using process substitution to avoid subshell issue
-            while IFS= read -r VERSION_JSON; do
-              if [ -z "$VERSION_JSON" ]; then
-                continue
-              fi
+            # Count matching versions
+            MATCHING_COUNT=$(echo "$MATCHING_VERSIONS" | wc -l | tr -d ' ')
+            
+            echo "📊 Matching versions to delete: $MATCHING_COUNT"
+            
+            # Since unstable packages have different artifactId (-unstable suffix),
+            # ALL versions in this package are unstable by definition.
+            # Delete the entire package directly.
+            echo "🗑️  Deleting entire unstable package: $PACKAGE_NAME"
+            
+            DELETE_PACKAGE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}"
+            
+            DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
+              -H "Authorization: Bearer $GITHUB_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$DELETE_PACKAGE_URL")
+            
+            HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -n 1)
+            
+            if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Successfully deleted entire package $PACKAGE_NAME"
               
-              VERSION_ID=$(echo "$VERSION_JSON" | jq -r '.id')
-              VERSION_NAME=$(echo "$VERSION_JSON" | jq -r '.name')
+              # Increment counter by number of versions deleted
+              CURRENT_COUNT=$(cat /tmp/deleted_count.txt)
+              NEW_COUNT=$((CURRENT_COUNT + MATCHING_COUNT))
+              echo "$NEW_COUNT" > /tmp/deleted_count.txt
               
-              if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
-                continue
-              fi
-              
-              echo "🗑️  Deleting version: $VERSION_NAME (ID: $VERSION_ID)"
-              
-              DELETE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions/${VERSION_ID}"
-              
-              DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
-                -H "Authorization: Bearer $GITHUB_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "$DELETE_URL")
-              
-              HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -n 1)
-              
-              if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
-                echo "✅ Successfully deleted version $VERSION_NAME"
-                
-                # Increment counter in file
-                CURRENT_COUNT=$(cat /tmp/deleted_count.txt)
-                NEW_COUNT=$((CURRENT_COUNT + 1))
-                echo "$NEW_COUNT" > /tmp/deleted_count.txt
-                
-                # Append to deleted packages list
+              # Append all versions to deleted packages list
+              while IFS= read -r VERSION_JSON; do
+                if [ -z "$VERSION_JSON" ]; then
+                  continue
+                fi
+                VERSION_NAME=$(echo "$VERSION_JSON" | jq -r '.name')
                 echo "- ${PACKAGE_NAME}:${VERSION_NAME}" >> /tmp/deleted_packages.txt
-              else
-                echo "⚠️  Failed to delete version $VERSION_NAME (HTTP $HTTP_CODE)"
-                echo "Response: $(echo "$DELETE_RESPONSE" | head -n -1)"
-              fi
-            done < <(echo "$MATCHING_VERSIONS")
+              done < <(echo "$MATCHING_VERSIONS")
+            else
+              echo "⚠️  Failed to delete package $PACKAGE_NAME (HTTP $HTTP_CODE)"
+              echo "Response: $(echo "$DELETE_RESPONSE" | head -n -1)"
+            fi
           done
           
           echo ""
