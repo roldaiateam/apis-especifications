@@ -42,7 +42,7 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
     Conflict:
-      description: conflict with the current state of the target resource
+      description: conflict with the current state of the target
       content:
         application/json:
           schema:
