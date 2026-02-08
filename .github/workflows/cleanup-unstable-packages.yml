@@ -120,45 +120,116 @@ jobs:
             echo "Found matching versions:"
             echo "$MATCHING_VERSIONS"
             
-            # Delete each version - using process substitution to avoid subshell issue
-            while IFS= read -r VERSION_JSON; do
-              if [ -z "$VERSION_JSON" ]; then
-                continue
-              fi
+            # Count total versions in the package
+            TOTAL_VERSIONS=$(echo "$RESPONSE" | jq 'length')
+            MATCHING_COUNT=$(echo "$MATCHING_VERSIONS" | wc -l)
+            
+            echo "📊 Total versions in package: $TOTAL_VERSIONS"
+            echo "📊 Matching versions to delete: $MATCHING_COUNT"
+            
+            # If all versions match (only unstable versions exist), delete the entire package
+            if [ "$TOTAL_VERSIONS" = "$MATCHING_COUNT" ] && [ "$MATCHING_COUNT" -gt 0 ]; then
+              echo "🗑️  Deleting entire package (all versions are unstable): $PACKAGE_NAME"
               
-              VERSION_ID=$(echo "$VERSION_JSON" | jq -r '.id')
-              VERSION_NAME=$(echo "$VERSION_JSON" | jq -r '.name')
-              
-              if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
-                continue
-              fi
-              
-              echo "🗑️  Deleting version: $VERSION_NAME (ID: $VERSION_ID)"
-              
-              DELETE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions/${VERSION_ID}"
+              DELETE_PACKAGE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}"
               
               DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
                 -H "Authorization: Bearer $GITHUB_TOKEN" \
                 -H "Accept: application/vnd.github+json" \
-                "$DELETE_URL")
+                "$DELETE_PACKAGE_URL")
               
               HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -n 1)
               
               if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
-                echo "✅ Successfully deleted version $VERSION_NAME"
+                echo "✅ Successfully deleted entire package $PACKAGE_NAME"
                 
-                # Increment counter in file
+                # Increment counter by number of versions deleted
                 CURRENT_COUNT=$(cat /tmp/deleted_count.txt)
-                NEW_COUNT=$((CURRENT_COUNT + 1))
+                NEW_COUNT=$((CURRENT_COUNT + MATCHING_COUNT))
                 echo "$NEW_COUNT" > /tmp/deleted_count.txt
                 
-                # Append to deleted packages list
-                echo "- ${PACKAGE_NAME}:${VERSION_NAME}" >> /tmp/deleted_packages.txt
+                # Append all versions to deleted packages list
+                while IFS= read -r VERSION_JSON; do
+                  if [ -z "$VERSION_JSON" ]; then
+                    continue
+                  fi
+                  VERSION_NAME=$(echo "$VERSION_JSON" | jq -r '.name')
+                  echo "- ${PACKAGE_NAME}:${VERSION_NAME}" >> /tmp/deleted_packages.txt
+                done < <(echo "$MATCHING_VERSIONS")
               else
-                echo "⚠️  Failed to delete version $VERSION_NAME (HTTP $HTTP_CODE)"
+                echo "⚠️  Failed to delete package $PACKAGE_NAME (HTTP $HTTP_CODE)"
                 echo "Response: $(echo "$DELETE_RESPONSE" | head -n -1)"
               fi
-            done < <(echo "$MATCHING_VERSIONS")
+            else
+              # Delete each version individually - using process substitution to avoid subshell issue
+              while IFS= read -r VERSION_JSON; do
+                if [ -z "$VERSION_JSON" ]; then
+                  continue
+                fi
+                
+                VERSION_ID=$(echo "$VERSION_JSON" | jq -r '.id')
+                VERSION_NAME=$(echo "$VERSION_JSON" | jq -r '.name')
+                
+                if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+                  continue
+                fi
+                
+                echo "🗑️  Deleting version: $VERSION_NAME (ID: $VERSION_ID)"
+                
+                DELETE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions/${VERSION_ID}"
+                
+                DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
+                  -H "Authorization: Bearer $GITHUB_TOKEN" \
+                  -H "Accept: application/vnd.github+json" \
+                  "$DELETE_URL")
+                
+                HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -n 1)
+                
+                if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+                  echo "✅ Successfully deleted version $VERSION_NAME"
+                  
+                  # Increment counter in file
+                  CURRENT_COUNT=$(cat /tmp/deleted_count.txt)
+                  NEW_COUNT=$((CURRENT_COUNT + 1))
+                  echo "$NEW_COUNT" > /tmp/deleted_count.txt
+                  
+                  # Append to deleted packages list
+                  echo "- ${PACKAGE_NAME}:${VERSION_NAME}" >> /tmp/deleted_packages.txt
+                elif [ "$HTTP_CODE" = "400" ]; then
+                  echo "⚠️  Cannot delete last version (HTTP 400) - deleting entire package instead"
+                  
+                  DELETE_PACKAGE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}"
+                  
+                  DELETE_PKG_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
+                    -H "Authorization: Bearer $GITHUB_TOKEN" \
+                    -H "Accept: application/vnd.github+json" \
+                    "$DELETE_PACKAGE_URL")
+                  
+                  PKG_HTTP_CODE=$(echo "$DELETE_PKG_RESPONSE" | tail -n 1)
+                  
+                  if [ "$PKG_HTTP_CODE" = "204" ] || [ "$PKG_HTTP_CODE" = "200" ]; then
+                    echo "✅ Successfully deleted entire package $PACKAGE_NAME"
+                    
+                    # Increment counter in file
+                    CURRENT_COUNT=$(cat /tmp/deleted_count.txt)
+                    NEW_COUNT=$((CURRENT_COUNT + 1))
+                    echo "$NEW_COUNT" > /tmp/deleted_count.txt
+                    
+                    # Append to deleted packages list
+                    echo "- ${PACKAGE_NAME}:${VERSION_NAME} (entire package)" >> /tmp/deleted_packages.txt
+                  else
+                    echo "⚠️  Failed to delete package $PACKAGE_NAME (HTTP $PKG_HTTP_CODE)"
+                    echo "Response: $(echo "$DELETE_PKG_RESPONSE" | head -n -1)"
+                  fi
+                  
+                  # Break the loop since package is deleted
+                  break
+                else
+                  echo "⚠️  Failed to delete version $VERSION_NAME (HTTP $HTTP_CODE)"
+                  echo "Response: $(echo "$DELETE_RESPONSE" | head -n -1)"
+                fi
+              done < <(echo "$MATCHING_VERSIONS")
+            fi
           done
           
           echo ""
