@@ -324,7 +324,7 @@ jobs:
             ### ${apiName} (${typeLabel})
             **Version:** \`${version}\`
             
-            Para consumir esta versión unstable en tu proyecto Maven, agrega la siguiente dependencia:
+            Para consumir esta versión unstable en tu proyecto Maven, agrega la siguiente dependencia a tu proyecto:
             
             \`\`\`xml
             <dependency>
