@@ -1,0 +1,219 @@
+name: Cleanup Unstable Packages
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  cleanup-unstable:
+    # Only run if the PR was merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Compute branch name
+        id: branch-info
+        run: |
+          HEAD_REF="${{ github.event.pull_request.head.ref }}"
+          echo "Original branch: $HEAD_REF"
+          
+          # Sanitize branch name (replace / with -)
+          BRANCH_NAME=$(echo "$HEAD_REF" | sed 's/\//-/g')
+          echo "Sanitized branch name: $BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Get all API modules
+        id: get-modules
+        run: |
+          echo "=================================================="
+          echo "READING API MODULES FROM ROOT METADATA"
+          echo "=================================================="
+          
+          if [ ! -f "metadata.yml" ]; then
+            echo "❌ Root metadata.yml not found"
+            exit 1
+          fi
+          
+          # Extract all definition-path values
+          MODULE_PATHS=$(yq eval '.apis[].definition-path' metadata.yml)
+          
+          if [ -z "$MODULE_PATHS" ]; then
+            echo "⚠️  No modules found in metadata.yml"
+            echo "modules=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "Found modules:"
+          echo "$MODULE_PATHS"
+          
+          # Convert to comma-separated list
+          MODULES_LIST=$(echo "$MODULE_PATHS" | tr '\n' ',' | sed 's/,$//')
+          echo "modules=$MODULES_LIST" >> $GITHUB_OUTPUT
+
+      - name: Delete unstable package versions
+        if: steps.get-modules.outputs.modules != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.PACKAGES_PAT }}
+          BRANCH_NAME: ${{ steps.branch-info.outputs.branch_name }}
+          MODULES: ${{ steps.get-modules.outputs.modules }}
+        run: |
+          echo "=================================================="
+          echo "SEARCHING AND DELETING UNSTABLE PACKAGES"
+          echo "=================================================="
+          
+          DELETED_COUNT=0
+          DELETED_PACKAGES=""
+          
+          # Split modules by comma
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+          
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            echo ""
+            echo "Processing module: $MODULE_PATH"
+            
+            # Compute unstable package name
+            MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}-unstable"
+            ENCODED_PACKAGE_NAME=$(echo "$PACKAGE_NAME" | sed 's/\./\%2E/g')
+            
+            echo "📦 Package name: $PACKAGE_NAME"
+            
+            # Query GitHub Packages API for versions
+            OWNER="${{ github.repository_owner }}"
+            API_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions"
+            
+            echo "🔍 Querying: $API_URL"
+            
+            RESPONSE=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" "$API_URL" || echo "[]")
+            
+            # Check if package exists
+            if echo "$RESPONSE" | grep -q '"message".*"Not Found"'; then
+              echo "📦 Package not found (never published) - skipping"
+              continue
+            fi
+            
+            # Extract versions that match the branch pattern
+            # Pattern: *-{branch-name}-SNAPSHOT
+            MATCHING_VERSIONS=$(echo "$RESPONSE" | jq -r ".[] | select(.name | contains(\"$BRANCH_NAME-SNAPSHOT\")) | {id: .id, name: .name}" || echo "")
+            
+            if [ -z "$MATCHING_VERSIONS" ] || [ "$MATCHING_VERSIONS" = "null" ]; then
+              echo "✅ No unstable versions found for branch $BRANCH_NAME"
+              continue
+            fi
+            
+            echo "Found matching versions:"
+            echo "$MATCHING_VERSIONS"
+            
+            # Delete each version
+            echo "$MATCHING_VERSIONS" | jq -r '.id' | while read VERSION_ID; do
+              if [ -z "$VERSION_ID" ] || [ "$VERSION_ID" = "null" ]; then
+                continue
+              fi
+              
+              VERSION_NAME=$(echo "$MATCHING_VERSIONS" | jq -r "select(.id == $VERSION_ID) | .name")
+              
+              echo "🗑️  Deleting version: $VERSION_NAME (ID: $VERSION_ID)"
+              
+              DELETE_URL="https://api.github.com/users/${OWNER}/packages/maven/${ENCODED_PACKAGE_NAME}/versions/${VERSION_ID}"
+              
+              DELETE_RESPONSE=$(curl -s -w "\n%{http_code}" -X DELETE \
+                -H "Authorization: Bearer $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "$DELETE_URL")
+              
+              HTTP_CODE=$(echo "$DELETE_RESPONSE" | tail -n 1)
+              
+              if [ "$HTTP_CODE" = "204" ] || [ "$HTTP_CODE" = "200" ]; then
+                echo "✅ Successfully deleted version $VERSION_NAME"
+                DELETED_COUNT=$((DELETED_COUNT + 1))
+                DELETED_PACKAGES="${DELETED_PACKAGES}\n- ${PACKAGE_NAME}:${VERSION_NAME}"
+              else
+                echo "⚠️  Failed to delete version $VERSION_NAME (HTTP $HTTP_CODE)"
+                echo "Response: $(echo "$DELETE_RESPONSE" | head -n -1)"
+              fi
+            done
+          done
+          
+          echo ""
+          echo "=================================================="
+          echo "CLEANUP SUMMARY"
+          echo "=================================================="
+          echo "Total versions deleted: $DELETED_COUNT"
+          
+          # Save results for PR comment
+          echo "$DELETED_COUNT" > /tmp/deleted_count.txt
+          echo -e "$DELETED_PACKAGES" > /tmp/deleted_packages.txt
+
+      - name: Comment cleanup result on PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            
+            let deletedCount = 0;
+            let deletedPackages = '';
+            
+            try {
+              deletedCount = parseInt(fs.readFileSync('/tmp/deleted_count.txt', 'utf8').trim());
+              deletedPackages = fs.readFileSync('/tmp/deleted_packages.txt', 'utf8').trim();
+            } catch (error) {
+              console.log('Could not read cleanup results, assuming nothing to delete');
+            }
+            
+            let comment = `## 🧹 Cleanup de Versiones Unstable\n\n`;
+            
+            if (deletedCount > 0) {
+              comment += `✅ Se eliminaron **${deletedCount}** versión(es) unstable asociadas a este PR:\n\n`;
+              comment += deletedPackages + '\n\n';
+              comment += `---\n\n`;
+              comment += `Las versiones unstable generadas desde este PR han sido limpiadas automáticamente de GitHub Packages.`;
+            } else {
+              comment += `ℹ️ No se encontraron versiones unstable asociadas a este PR para limpiar.\n\n`;
+              comment += `Esto es normal si no se generaron versiones unstable usando el comando \`/generate-api\`.`;
+            }
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Cleanup failed - notify
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comment = `## ⚠️ Error en Cleanup de Versiones Unstable
+            
+            Hubo un error al intentar limpiar las versiones unstable asociadas a este PR.
+            
+            Por favor, revisa los logs del workflow:
+            [Ver logs](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+            
+            **Nota:** Esto no afecta el merge del PR. Las versiones unstable pueden limpiarse manualmente si es necesario.
+            `;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
