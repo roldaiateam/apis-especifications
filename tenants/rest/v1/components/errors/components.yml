@@ -1,0 +1,73 @@
+components:
+  schemas:
+    ApiErrorResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        errorCode:
+          type: integer
+          format: int64
+          description: Error code
+          example: 1001
+          minimum: 1
+        errorMessage:
+          type: string
+          description: Error message
+          example: "An error occurred"
+          maxLength: 255
+
+  responses:
+    BadRequest:
+      description: Request contains incorrect syntax or cannot be processed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Conflict:
+      description: conflict with the current state of the target resource
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    GatewayTimeout:
+      description: Gateway Timeout - Use it to report a Timeout occurred on the server.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'
+    Default:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiErrorResponse'

@@ -23,6 +23,7 @@
 
     <modules>
         <module>tenants/event</module>
+        <module>tenants/rest</module>
     </modules>
 
     <build>
