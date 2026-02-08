@@ -30,7 +30,7 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
     Forbidden:
-      description: Forbidden
+      description: Forbidden request
       content:
         application/json:
           schema:
