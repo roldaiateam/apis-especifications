@@ -106,7 +106,8 @@ jobs:
             fi
             
             # Extract API version from spec file
-            API_VERSION=$(grep -A 5 '^info:' "$SPEC_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+            # Use sed to handle both spaces and tabs for indentation
+            API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
             
             if [ -z "$API_VERSION" ]; then
               echo "❌ Could not extract API version from $SPEC_FILE"
@@ -119,7 +120,7 @@ jobs:
             
             # Determine Maven package name
             MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}"
+            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}-stable"
             ENCODED_PACKAGE_NAME=$(echo "$PACKAGE_NAME" | sed 's/\./\%2E/g')
             
             echo "📦 Maven package: $PACKAGE_NAME"
@@ -211,11 +212,12 @@ jobs:
                continue
              fi
              
-             if [ -f "$SPEC_FILE" ]; then
-               API_VERSION=$(grep -A 5 '^info:' "$SPEC_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
-               echo "📋 Found API version in $SPEC_FILE: $API_VERSION"
-               break
-             fi
+              if [ -f "$SPEC_FILE" ]; then
+                # Use sed to handle both spaces and tabs for indentation
+                API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
+                echo "📋 Found API version in $SPEC_FILE: $API_VERSION"
+                break
+              fi
            done
            
             if [ -z "$API_VERSION" ]; then
@@ -284,9 +286,9 @@ jobs:
             
             # Check if this module has a spec file (asyncapi.yml or openapi-rest.yml)
             if [ -f "$MODULE_PATH/asyncapi.yml" ] || [ -f "$MODULE_PATH/openapi-rest.yml" ]; then
-              # Get artifact ID from module path
+              # Get artifact ID from module path with -stable suffix
               MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-              ARTIFACT_ID="${MODULE_NAME}"
+              ARTIFACT_ID="${MODULE_NAME}-stable"
               
               COMMENT="${COMMENT}<dependency>\n"
               COMMENT="${COMMENT}    <groupId>com.proactivedevs.contracts</groupId>\n"

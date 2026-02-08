@@ -11,7 +11,7 @@ This contract defines the events emitted by the Tenants microservice when tenant
 ```xml
 <dependency>
     <groupId>com.proactivedevs.contracts</groupId>
-    <artifactId>tenants-event</artifactId>
+    <artifactId>tenants-event-stable</artifactId>
     <version>1.0.0</version>
 </dependency>
 ```

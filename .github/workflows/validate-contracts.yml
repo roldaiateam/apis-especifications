@@ -98,7 +98,8 @@ jobs:
             fi
             
             # Extract API version from spec file (info.version field)
-            API_VERSION=$(grep -A 5 '^info:' "$SPEC_FILE" | grep '^\s*version:' | awk '{print $2}' | tr -d '"' | tr -d "'")
+            # Use sed to handle both spaces and tabs for indentation
+            API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
             
             if [ -z "$API_VERSION" ]; then
               echo "❌ Could not extract API version from $SPEC_FILE"
@@ -110,9 +111,9 @@ jobs:
             echo "📋 API version in PR: $API_VERSION"
             
             # Determine Maven package name from module path
-            # Convert path like "tenants/event" to "com.proactivedevs.contracts.tenants-event"
+            # Convert path like "tenants/event" to "com.proactivedevs.contracts.tenants-event-stable"
             MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}"
+            PACKAGE_NAME="com.proactivedevs.contracts.${MODULE_NAME}-stable"
             
             echo "📦 Maven package name: $PACKAGE_NAME"
             

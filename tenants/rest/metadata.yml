@@ -1,49 +1,31 @@
 ---
-name: "Tenants REST API"
 api-spec-type: rest
-format: openapi
-version: 0.0.1
 
-description: |
-  OpenAPI 3.0.3 specification for Tenants REST API.
-  Provides endpoints for tenant management operations.
-
-rest:
-  base-path: /api/tenants
-  content-type: application/json
-  authentication:
-    - type: basic
-      scheme: http
-    - type: bearer
-      scheme: http
-      format: JWT
-
-endpoints:
-  - path: /v1/tenants
-    method: POST
-    operation-id: createTenant
-    description: Creates a new tenant in the system with the provided user information
-    request-schema: CreateTenantRequest
-    response-schema: CreateTenantResponse
-    status-codes:
-      - 201: Tenant created successfully
-      - 400: Bad Request
-      - 401: Unauthorized
-      - 403: Forbidden
-      - 409: Conflict
-      - 500: Internal Server Error
+api:
+  name: Tenants REST API
+  version: 0.0.1
+  description: >
+    This API provides endpoints that allow tenants to manage tenant information within the system.
+    It enables operations such as creating new tenants and managing tenant data.
+  maintainer:
+    name: Andrés Reinaldo Cid
+    email: andresrc345@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  basePath: /api/tenants
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+  documentation:
+    url: ./README.md
 
 openapi:
   spec-version: 3.0.3
-  spec-path: openapi-rest.yml
-  components-path: v1/components
-  services-path: v1/services
+  spec-file: openapi-rest.yml
+  format: openapi
 
 codegen:
   package-prefix: com.proactivedevs.contracts.tenants.rest.v1
-  api-package: com.proactivedevs.contracts.tenants.rest.v1.api
   model-package: com.proactivedevs.contracts.tenants.rest.v1.model
 
-maven:
-  groupId: com.proactivedevs.contracts
-  artifactId: tenants-rest

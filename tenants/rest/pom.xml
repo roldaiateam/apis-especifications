@@ -12,7 +12,7 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>tenants-rest</artifactId>
+    <artifactId>tenants-rest-stable</artifactId>
     <packaging>jar</packaging>
 
     <name>Tenants REST Contract</name>

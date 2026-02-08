@@ -68,7 +68,7 @@ This contract is published to GitHub Packages as:
 ```xml
 <dependency>
     <groupId>com.proactivedevs.contracts</groupId>
-    <artifactId>tenants-rest</artifactId>
+    <artifactId>tenants-rest-stable</artifactId>
     <version>X.Y.Z</version> <!-- Version from openapi-rest.yml -->
 </dependency>
 ```
@@ -92,7 +92,7 @@ If you're **implementing the API** (e.g., in `mic-clients`):
 ```xml
 <dependency>
     <groupId>com.proactivedevs.contracts</groupId>
-    <artifactId>tenants-rest</artifactId>
+    <artifactId>tenants-rest-stable</artifactId>
     <version>0.0.1-SNAPSHOT</version>
 </dependency>
 ```
