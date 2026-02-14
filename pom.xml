@@ -7,7 +7,7 @@
 
     <groupId>com.proactivedevs.contracts</groupId>
     <artifactId>apis-especifications</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>APIs Especifications</name>
@@ -23,6 +23,7 @@
 
     <modules>
         <module>tenants/event</module>
+        <module>tenants/rest</module>
     </modules>
 
     <build>

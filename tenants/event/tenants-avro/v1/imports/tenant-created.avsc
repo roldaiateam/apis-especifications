@@ -2,7 +2,7 @@
   "type": "record",
   "name": "TenantCreatedAvro",
   "namespace": "com.proactivedevs.contracts.tenants.v1",
-  "doc": "Base tenant information schema",
+  "doc": "Schema representing the data payload for a tenant created event",
   "fields": [
     {
       "name": "tenantId",
@@ -20,9 +20,9 @@
       "doc": "Company name associated with the tenant"
     },
     {
-      "name": "userName",
+      "name": "adminId",
       "type": "string",
-      "doc": "Name of the user who created the tenant"
+      "doc": "Identifier of the user who created the tenant"
     }
   ]
 }

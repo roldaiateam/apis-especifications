@@ -8,11 +8,12 @@
     <parent>
         <groupId>com.proactivedevs.contracts</groupId>
         <artifactId>apis-especifications</artifactId>
-        <version>1.0.0-SNAPSHOT</version>
+        <version>1.0.1-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>tenants-event</artifactId>
+    <artifactId>tenants-event-stable</artifactId>
+    <version>1.0.3-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Tenants Event Contract</name>

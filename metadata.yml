@@ -6,3 +6,6 @@ apis:
   - name: "Tenants Events"
     api-spec-type: event
     definition-path: tenants/event
+  - name: "Tenants REST API"
+    api-spec-type: rest
+    definition-path: tenants/rest

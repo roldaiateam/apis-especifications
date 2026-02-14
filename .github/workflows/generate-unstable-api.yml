@@ -1,0 +1,371 @@
+name: Generate Unstable API
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  packages: write
+  pull-requests: write
+
+jobs:
+  generate-unstable:
+    if: github.event.issue.pull_request && contains(github.event.comment.body, '/generate-api')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: React to comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+      - name: Post initial progress comment
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const comment = `## 🚀 Generando Versión Unstable
+            
+            Tu solicitud está siendo procesada...
+            
+            📋 **Estado:** En progreso
+            🔗 **Logs del workflow:** [Ver ejecución](${runUrl})
+            
+            _Este comentario se actualizará cuando el proceso termine._
+            `;
+            
+            const { data: newComment } = await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+            
+            // Save comment ID for later update
+            core.setOutput('comment_id', newComment.id);
+
+      - name: Parse command arguments
+        id: parse-args
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          echo "Comment body: $COMMENT_BODY"
+          
+          # Extract --name argument
+          API_NAME=$(echo "$COMMENT_BODY" | grep -oP '(?<=--name\s")[^"]+' || echo "")
+          if [ -z "$API_NAME" ]; then
+            API_NAME=$(echo "$COMMENT_BODY" | grep -oP "(?<=--name\s')[^']+" || echo "")
+          fi
+          
+          if [ -z "$API_NAME" ]; then
+            echo "❌ Could not parse --name argument"
+            echo "error=missing-name" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "api_name=$API_NAME" >> $GITHUB_OUTPUT
+          echo "📋 API Name: $API_NAME"
+          
+          # Extract --packaging argument
+          PACKAGING=$(echo "$COMMENT_BODY" | grep -oP '(?<=--packaging\s)\w+' || echo "mvn")
+          echo "packaging=$PACKAGING" >> $GITHUB_OUTPUT
+          echo "📦 Packaging: $PACKAGING"
+          
+          # Validate packaging
+          if [ "$PACKAGING" != "mvn" ]; then
+            echo "❌ Unsupported packaging: $PACKAGING (only 'mvn' is supported)"
+            echo "error=unsupported-packaging" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Get PR details
+        id: pr-details
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+            
+            console.log('PR head ref:', pr.head.ref);
+            console.log('PR head sha:', pr.head.sha);
+            
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('head_sha', pr.head.sha);
+            return pr.head.ref;
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.pr-details.outputs.head_sha }}
+          fetch-depth: 0
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Find module by API name
+        id: find-module
+        env:
+          API_NAME: ${{ steps.parse-args.outputs.api_name }}
+        run: |
+          echo "=================================================="
+          echo "FINDING MODULE FOR API: $API_NAME"
+          echo "=================================================="
+          
+          # Read root metadata.yml
+          if [ ! -f "metadata.yml" ]; then
+            echo "❌ Root metadata.yml not found"
+            echo "error=no-root-metadata" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Parse YAML to find the definition-path for the given name
+          MODULE_PATH=$(yq eval ".apis[] | select(.name == \"$API_NAME\") | .\"definition-path\"" metadata.yml)
+          
+          if [ -z "$MODULE_PATH" ] || [ "$MODULE_PATH" = "null" ]; then
+            echo "❌ No module found with name: $API_NAME"
+            echo "Available APIs:"
+            yq eval '.apis[].name' metadata.yml
+            echo "error=api-not-found" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "✅ Found module path: $MODULE_PATH"
+          echo "module_path=$MODULE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Extract API version and metadata
+        id: extract-version
+        env:
+          MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
+        run: |
+          echo "=================================================="
+          echo "EXTRACTING VERSION FROM MODULE: $MODULE_PATH"
+          echo "=================================================="
+          
+          # Read module metadata.yml
+          METADATA_FILE="$MODULE_PATH/metadata.yml"
+          if [ ! -f "$METADATA_FILE" ]; then
+            echo "❌ Module metadata.yml not found at $METADATA_FILE"
+            echo "error=no-module-metadata" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Determine API spec type
+          API_SPEC_TYPE=$(grep '^api-spec-type:' "$METADATA_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+          echo "📋 API spec type: $API_SPEC_TYPE"
+          
+          # Determine spec file based on type
+          if [ "$API_SPEC_TYPE" = "event" ]; then
+            SPEC_FILE="$MODULE_PATH/asyncapi.yml"
+          elif [ "$API_SPEC_TYPE" = "rest" ]; then
+            SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
+          else
+            echo "❌ Unknown api-spec-type: $API_SPEC_TYPE"
+            echo "error=unknown-spec-type" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          if [ ! -f "$SPEC_FILE" ]; then
+            echo "❌ Spec file not found: $SPEC_FILE"
+            echo "error=no-spec-file" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "📄 Spec file: $SPEC_FILE"
+          
+          # Extract API version from spec file
+          API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
+          
+          if [ -z "$API_VERSION" ]; then
+            echo "❌ Could not extract API version from $SPEC_FILE"
+            echo "error=no-api-version" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "✅ API version: $API_VERSION"
+          echo "api_version=$API_VERSION" >> $GITHUB_OUTPUT
+          echo "spec_type=$API_SPEC_TYPE" >> $GITHUB_OUTPUT
+
+      - name: Compute unstable version and artifact ID
+        id: compute-unstable
+        env:
+          MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
+          API_VERSION: ${{ steps.extract-version.outputs.api_version }}
+          HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
+        run: |
+          echo "=================================================="
+          echo "COMPUTING UNSTABLE VERSION"
+          echo "=================================================="
+          
+          # Sanitize branch name (replace / with -)
+          BRANCH_NAME=$(echo "$HEAD_REF" | sed 's/\//-/g')
+          echo "📋 Sanitized branch name: $BRANCH_NAME"
+          
+          # Compute unstable version: {api-version}-{branch-name}-SNAPSHOT
+          UNSTABLE_VERSION="${API_VERSION}-${BRANCH_NAME}-SNAPSHOT"
+          echo "📦 Unstable version: $UNSTABLE_VERSION"
+          echo "unstable_version=$UNSTABLE_VERSION" >> $GITHUB_OUTPUT
+          
+          # Compute artifact IDs
+          MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+          STABLE_ARTIFACT_ID="${MODULE_NAME}-stable"
+          UNSTABLE_ARTIFACT_ID="${MODULE_NAME}-unstable"
+          
+          echo "📦 Stable artifact ID: $STABLE_ARTIFACT_ID"
+          echo "📦 Unstable artifact ID: $UNSTABLE_ARTIFACT_ID"
+          
+          echo "stable_artifact_id=$STABLE_ARTIFACT_ID" >> $GITHUB_OUTPUT
+          echo "unstable_artifact_id=$UNSTABLE_ARTIFACT_ID" >> $GITHUB_OUTPUT
+
+      - name: Modify POM temporarily
+        env:
+          MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
+          STABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.stable_artifact_id }}
+          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
+          UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
+        run: |
+          echo "=================================================="
+          echo "MODIFYING POM TEMPORARILY"
+          echo "=================================================="
+          
+          POM_FILE="$MODULE_PATH/pom.xml"
+          
+          if [ ! -f "$POM_FILE" ]; then
+            echo "❌ POM file not found: $POM_FILE"
+            exit 1
+          fi
+          
+          echo "Original POM excerpt:"
+          grep -A 2 '<artifactId>' "$POM_FILE" | head -n 6
+          
+          # Replace artifactId: stable → unstable
+          sed -i.bak "s|<artifactId>$STABLE_ARTIFACT_ID</artifactId>|<artifactId>$UNSTABLE_ARTIFACT_ID</artifactId>|g" "$POM_FILE"
+          
+          # Replace version
+          sed -i.bak "/<artifactId>$UNSTABLE_ARTIFACT_ID<\/artifactId>/,/<version>/ s|<version>[^<]*</version>|<version>$UNSTABLE_VERSION</version>|" "$POM_FILE"
+          
+          rm -f "$POM_FILE.bak"
+          
+          echo "Modified POM excerpt:"
+          grep -A 2 '<artifactId>' "$POM_FILE" | head -n 6
+          
+          echo "✅ POM modified successfully"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
+
+      - name: Build unstable artifact
+        env:
+          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
+        run: |
+          echo "=================================================="
+          echo "BUILDING UNSTABLE ARTIFACT"
+          echo "=================================================="
+          
+          mvn clean verify -pl ":$UNSTABLE_ARTIFACT_ID"
+
+      - name: Deploy unstable artifact
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
+        run: |
+          echo "=================================================="
+          echo "DEPLOYING UNSTABLE ARTIFACT TO GITHUB PACKAGES"
+          echo "=================================================="
+          
+          mvn deploy -pl ":$UNSTABLE_ARTIFACT_ID" -DskipTests
+
+      - name: Post success comment
+        if: success()
+        uses: actions/github-script@v7
+        env:
+          API_NAME: ${{ steps.parse-args.outputs.api_name }}
+          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
+          UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
+          SPEC_TYPE: ${{ steps.extract-version.outputs.spec_type }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const apiName = process.env.API_NAME;
+            const artifactId = process.env.UNSTABLE_ARTIFACT_ID;
+            const version = process.env.UNSTABLE_VERSION;
+            const specType = process.env.SPEC_TYPE;
+            
+            const typeLabel = specType === 'event' ? 'AsyncAPI' : 'OpenAPI';
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const comment = `## ✅ Versión Unstable Generada Exitosamente
+            
+            ### ${apiName} (${typeLabel})
+            **Version:** \`${version}\`
+            
+            Para consumir esta versión unstable en tu proyecto Maven, agrega la siguiente dependencia:
+            
+            \`\`\`xml
+            <dependency>
+                <groupId>com.proactivedevs.contracts</groupId>
+                <artifactId>${artifactId}</artifactId>
+                <version>${version}</version>
+            </dependency>
+            \`\`\`
+            
+            ---
+            
+            ⚠️ **Nota:** Esta es una versión **inestable** generada desde este PR. Será automáticamente eliminada cuando el PR sea mergeado.
+            
+            📦 **Ubicación:** [GitHub Packages](https://github.com/${context.repo.owner}/${context.repo.repo}/packages)
+            🔗 **Logs del workflow:** [Ver ejecución](${runUrl})
+            `;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      - name: Post error comment
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            
+            const comment = `## ❌ Error al Generar Versión Unstable
+            
+            Hubo un error al intentar generar la versión unstable de la API.
+            
+            Por favor, revisa los logs del workflow para más detalles:
+            🔗 [Ver logs de ejecución](${runUrl})
+            `;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
