@@ -11,6 +11,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  deployments: write
 
 jobs:
   generate-and-deploy:
@@ -41,7 +43,11 @@ jobs:
         with:
           publish-dir: './docs'
           production-branch: main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           deploy-message: "Deploy from GitHub Actions"
+          enable-pull-request-comment: true
+          enable-commit-comment: false
+          overwrites-pull-request-comment: true
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
           NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
