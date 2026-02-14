@@ -21,12 +21,12 @@ servers:
         description: Development environment
 
 channels:
-  tenantsEvents:
-    address: tenants.events
+  tenant.created.v1:
+    address: tenant.created
+    description: Event emitted when a new tenant is created
     messages:
       tenantCreated:
         $ref: '#/components/messages/TenantCreated'
-    description: Channel for tenant-related events
     bindings:
       amqp:
         is: routingKey
@@ -41,7 +41,7 @@ operations:
   publishTenantCreated:
     action: send
     channel:
-      $ref: '#/channels/tenantsEvents'
+      $ref: '#/channels/tenant.created.v1'
     summary: Publish a tenant created event
     description: |
       This event is published when a new tenant is successfully created in the system.

@@ -40,7 +40,7 @@ def get_api_identifier(definition_path):
     """Convert definition path to API identifier (e.g., tenants/rest -> tenants-rest)"""
     return definition_path.replace('/', '-')
 
-def generate_swagger_page(api_name, spec_url, version_type):
+def generate_swagger_page(api_name, spec_url, version_type, definition_path, spec_file, branch):
     """Generate Swagger UI HTML page"""
 
     is_stable = version_type == 'stable'
@@ -161,8 +161,10 @@ def generate_swagger_page(api_name, spec_url, version_type):
     <script src="../../swagger-ui/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
     <script>
         window.onload = function() {{
-            // Point to the OpenAPI spec directly from GitHub
-            const specUrl = "{spec_url}";
+            // Use Netlify Function proxy to load specs from GitHub
+            const branch = "{branch}";
+            const specPath = "{definition_path}/{spec_file}";
+            const specUrl = `/.netlify/functions/github-spec-proxy?branch=${{branch}}&path=${{specPath}}`;
 
             const ui = SwaggerUIBundle({{
                 url: specUrl,
@@ -562,15 +564,15 @@ def main():
         snapshot_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate Swagger UI pages
-        stable_page = generate_swagger_page(api_name, stable_url, 'stable')
-        snapshot_page = generate_swagger_page(api_name, snapshot_url, 'snapshot')
+        stable_page = generate_swagger_page(api_name, stable_url, 'stable', definition_path, spec_file, branch='main')
+        snapshot_page = generate_swagger_page(api_name, snapshot_url, 'snapshot', definition_path, spec_file, branch='develop')
 
-        # Write pages
+        # Write pages (specs are loaded via Netlify proxy, no need to copy)
         (stable_dir / 'index.html').write_text(stable_page)
         (snapshot_dir / 'index.html').write_text(snapshot_page)
 
-        print(f"    ✓ Generated stable page: docs/stable/{api_id}/index.html")
-        print(f"    ✓ Generated snapshot page: docs/snapshot/{api_id}/index.html")
+        print(f"    ✓ Generated stable page: docs/stable/{api_id}/index.html (proxy: main/{definition_path}/{spec_file})")
+        print(f"    ✓ Generated snapshot page: docs/snapshot/{api_id}/index.html (proxy: develop/{definition_path}/{spec_file})")
 
     # Generate index page
     print("  📝 Generating index.html...")
