@@ -9,6 +9,7 @@ This script:
 
 import yaml
 import os
+import shutil
 from pathlib import Path
 
 # Configuration
@@ -40,7 +41,62 @@ def get_api_identifier(definition_path):
     """Convert definition path to API identifier (e.g., tenants/rest -> tenants-rest)"""
     return definition_path.replace('/', '-')
 
-def generate_swagger_page(api_name, spec_url, version_type, definition_path, spec_file, branch):
+def copy_api_files(source_path, target_path):
+    """
+    Copy API files excluding build artifacts and IDE files
+
+    Args:
+        source_path: Source directory (e.g., 'tenants/rest')
+        target_path: Target directory (e.g., 'docs/stable/tenants-rest')
+    """
+    source = Path(source_path)
+    target = Path(target_path)
+
+    # Create target directory
+    target.mkdir(parents=True, exist_ok=True)
+
+    # Patterns to skip (build artifacts, IDE files, etc.)
+    skip_patterns = {
+        'target',       # Maven build
+        '.classpath',   # Eclipse
+        '.project',     # Eclipse
+        '.settings',    # Eclipse
+        'pom.xml',      # Maven (not needed for Swagger UI)
+        '.git',         # Git
+        '__pycache__',  # Python
+        '.DS_Store',    # macOS
+        'README.md',    # Optional, can skip
+        'metadata.yml'  # Optional, can skip
+    }
+
+    # Copy files recursively
+    copied_count = 0
+    for file in source.rglob('*'):
+        if file.is_file():
+            # Check if should be skipped
+            should_skip = False
+            for pattern in skip_patterns:
+                if pattern in file.parts or file.name == pattern:
+                    should_skip = True
+                    break
+
+            if should_skip:
+                continue
+
+            # Calculate relative path and destination
+            relative_path = file.relative_to(source)
+            dest_file = target / relative_path
+
+            # Create parent directory if needed
+            dest_file.parent.mkdir(parents=True, exist_ok=True)
+
+            # Copy file
+            shutil.copy2(file, dest_file)
+            copied_count += 1
+
+    print(f"    ✓ Copied {copied_count} API files from {source_path} to {target_path}")
+
+def generate_swagger_page(api_name, spec_url, version_type, definition_path, spec_file):
     """Generate Swagger UI HTML page"""
 
     is_stable = version_type == 'stable'
@@ -161,10 +217,8 @@ def generate_swagger_page(api_name, spec_url, version_type, definition_path, spe
     <script src="../../swagger-ui/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
     <script>
         window.onload = function() {{
-            // Use Netlify Function proxy to load specs from GitHub
-            const branch = "{branch}";
-            const specPath = "{definition_path}/{spec_file}";
-            const specUrl = `/.netlify/functions/github-spec-proxy?branch=${{branch}}&path=${{specPath}}`;
+            // Load spec from local files (copied to docs/)
+            const specUrl = './openapi-rest.yml';
 
             const ui = SwaggerUIBundle({{
                 url: specUrl,
@@ -184,30 +238,7 @@ def generate_swagger_page(api_name, spec_url, version_type, definition_path, spe
                 filter: true,
                 showRequestHeaders: true,
                 tryItOutEnabled: true,
-                validatorUrl: null, // Disable validator to avoid CORS issues with $ref
-                requestInterceptor: (req) => {{
-                    // Intercept requests for $ref files and route them through the proxy
-                    if (req.url.endsWith('.yml') || req.url.endsWith('.yaml')) {{
-                        // Check if it's a relative path (not already proxied)
-                        if (!req.url.includes('github-spec-proxy')) {{
-                            // Extract the relative path from the URL
-                            const url = new URL(req.url, window.location.origin);
-                            const pathname = url.pathname;
-
-                            // If it's a relative reference (starts with ./ or just a path)
-                            if (pathname.includes('/v1/')) {{
-                                // Extract the part after the last occurrence of the base path
-                                const match = pathname.match(/\\/(v1\\/.*\\.ya?ml)$/);
-                                if (match) {{
-                                    const relativePath = match[1];
-                                    // Route through proxy with correct branch and path
-                                    req.url = `/.netlify/functions/github-spec-proxy/${{relativePath}}`;
-                                }}
-                            }}
-                        }}
-                    }}
-                    return req;
-                }}
+                validatorUrl: null
             }});
 
             window.ui = ui;
@@ -587,15 +618,20 @@ def main():
         snapshot_dir.mkdir(parents=True, exist_ok=True)
 
         # Generate Swagger UI pages
-        stable_page = generate_swagger_page(api_name, stable_url, 'stable', definition_path, spec_file, branch='main')
-        snapshot_page = generate_swagger_page(api_name, snapshot_url, 'snapshot', definition_path, spec_file, branch='develop')
+        stable_page = generate_swagger_page(api_name, stable_url, 'stable', definition_path, spec_file)
+        snapshot_page = generate_swagger_page(api_name, snapshot_url, 'snapshot', definition_path, spec_file)
 
-        # Write pages (specs are loaded via Netlify proxy, no need to copy)
+        # Write HTML pages
         (stable_dir / 'index.html').write_text(stable_page)
         (snapshot_dir / 'index.html').write_text(snapshot_page)
 
-        print(f"    ✓ Generated stable page: docs/stable/{api_id}/index.html (proxy: main/{definition_path}/{spec_file})")
-        print(f"    ✓ Generated snapshot page: docs/snapshot/{api_id}/index.html (proxy: develop/{definition_path}/{spec_file})")
+        # Copy entire API folder structure to both stable and snapshot
+        copy_api_files(definition_path, stable_dir)
+        copy_api_files(definition_path, snapshot_dir)
+
+        print(f"    ✓ Generated stable page: docs/stable/{api_id}/index.html")
+        print(f"    ✓ Generated snapshot page: docs/snapshot/{api_id}/index.html")
+        print(f"    ✓ Copied API files to both stable and snapshot")
 
     # Generate index page
     print("  📝 Generating index.html...")
