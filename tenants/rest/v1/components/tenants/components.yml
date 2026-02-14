@@ -38,7 +38,7 @@ components:
           description: Phone number of the user
           minLength: 10
           maxLength: 20
-          example: "+1234567890"
+          example: "+34633852671"
         companyName:
           type: string
           description: Company name of the tenant
