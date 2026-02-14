@@ -199,8 +199,8 @@ Una vez desplegado en Netlify:
 La URL exacta dependerá del nombre de tu sitio en Netlify.
 
 Cada página de Swagger UI apunta directamente a:
-- **Stable:** `https://raw.githubusercontent.com/ThalioStock/apis-especifications/main/{path}/openapi-rest.yml`
-- **Snapshot:** `https://raw.githubusercontent.com/ThalioStock/apis-especifications/develop/{path}/openapi-rest.yml`
+- **Stable:** `https://raw.githubusercontent.com/roldaiateam/apis-especifications/main/{path}/openapi-rest.yml`
+- **Snapshot:** `https://raw.githubusercontent.com/roldaiateam/apis-especifications/develop/{path}/openapi-rest.yml`
 
 ## 🔧 Actualizar Especificaciones OpenAPI
 
