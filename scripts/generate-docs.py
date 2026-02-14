@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 
 # Configuration
-REPO_OWNER = "ThalioStock"
+REPO_OWNER = "roldaiateam"
 REPO_NAME = "apis-especifications"
 STABLE_BRANCH = "main"
 SNAPSHOT_BRANCH = "develop"
