@@ -127,7 +127,30 @@
                 filter: true,
                 showRequestHeaders: true,
                 tryItOutEnabled: true,
-                validatorUrl: null // Disable validator to avoid CORS issues with $ref
+                validatorUrl: null, // Disable validator to avoid CORS issues with $ref
+                requestInterceptor: (req) => {
+                    // Intercept requests for $ref files and route them through the proxy
+                    if (req.url.endsWith('.yml') || req.url.endsWith('.yaml')) {
+                        // Check if it's a relative path (not already proxied)
+                        if (!req.url.includes('github-spec-proxy')) {
+                            // Extract the relative path from the URL
+                            const url = new URL(req.url, window.location.origin);
+                            const pathname = url.pathname;
+
+                            // If it's a relative reference (starts with ./ or just a path)
+                            if (pathname.includes('/v1/')) {
+                                // Extract the part after the last occurrence of the base path
+                                const match = pathname.match(/\/(v1\/.*\.ya?ml)$/);
+                                if (match) {
+                                    const relativePath = match[1];
+                                    // Route through proxy with correct branch and path
+                                    req.url = `/.netlify/functions/github-spec-proxy/${relativePath}`;
+                                }
+                            }
+                        }
+                    }
+                    return req;
+                }
             });
 
             window.ui = ui;
