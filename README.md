@@ -35,6 +35,22 @@ apis-especifications/
 └── [future APIs]
 ```
 
+## Interactive API Documentation
+
+Browse and test our OpenAPI contracts interactively using Swagger UI:
+
+**Netlify Site:** The site will be deployed automatically via GitHub Actions to Netlify.
+
+### Available REST APIs
+
+| API | Stable (main) | Snapshot (develop) |
+|-----|---------------|-------------------|
+| Tenants REST API | Available at `/stable/tenants-rest/` | Available at `/snapshot/tenants-rest/` |
+
+**Note:** AsyncAPI specifications (event-driven APIs) are not displayed via Swagger UI. Use [AsyncAPI Studio](https://studio.asyncapi.com/) or download the specs from this repository.
+
+**Setup:** See [NETLIFY_SETUP.md](./NETLIFY_SETUP.md) for deployment configuration.
+
 ## Maven Artifacts
 
 All contracts are published to GitHub Packages under:
@@ -43,9 +59,10 @@ All contracts are published to GitHub Packages under:
 
 ### Available Contracts
 
-| Contract | ArtifactId | Type | Current Version |
-|----------|-----------|------|-----------------|
-| Tenants Events | `tenants-event` | AsyncAPI | 1.0.1 |
+| Contract | ArtifactId | Type | Version |
+|----------|-----------|------|---------|
+| Tenants Events | `tenants-event` | AsyncAPI | 1.0.0 |
+| Tenants REST | `tenants-rest-stable` | OpenAPI | 0.0.1 |
 
 ## Versioning Strategy
 
