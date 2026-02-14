@@ -35,7 +35,7 @@
         }
       ],
       "default": null,
-      "doc": "Optional metadata for extensibility"
+      "doc": "Optional metadata"
     }
   ]
 }
