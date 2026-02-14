@@ -218,7 +218,7 @@ def generate_swagger_page(api_name, spec_url, version_type, definition_path, spe
     <script>
         window.onload = function() {{
             // Load spec from local files (copied to docs/)
-            const specUrl = './openapi-rest.yml';
+            const specUrl = './{spec_file}';
 
             const ui = SwaggerUIBundle({{
                 url: specUrl,
