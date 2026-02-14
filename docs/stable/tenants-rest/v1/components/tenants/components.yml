@@ -1,0 +1,67 @@
+components:
+  schemas:
+    CreateTenantRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          description: First name of the user
+          minLength: 2
+          maxLength: 100
+          example: "John Doe"
+        lastName:
+          type: string
+          description: Last name of the user
+          minLength: 2
+          maxLength: 100
+          example: "Smith"
+        username:
+          type: string
+          description: Username for the user account
+          minLength: 4
+          maxLength: 50
+          example: "johndoe"
+        email:
+          type: string
+          format: email
+          description: Email address of the user
+          maxLength: 255
+          example: "john.doe@example.com"
+        password:
+          type: string
+          description: Password for the user account
+          minLength: 8
+          maxLength: 100
+          example: "P@ssw0rd!"
+        phoneNumber:
+          type: string
+          description: Phone number of the user
+          minLength: 10
+          maxLength: 20
+          example: "+1234567890"
+        companyName:
+          type: string
+          description: Company name of the tenant
+          minLength: 2
+          maxLength: 150
+          example: "Acme Corporation"
+      required:
+        - firstName
+        - lastName
+        - username
+        - email
+        - password
+        - companyName
+    
+    CreateTenantResponse:
+      type: object
+      properties:
+        tenantId:
+          type: integer
+          format: int64
+          description: Unique identifier for the tenant
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        token:
+          type: string
+          description: Authentication token for the newly created tenant
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."

@@ -1,0 +1,30 @@
+post:
+  tags:
+    - Tenants
+  summary: Create a new tenant
+  description: Creates a new tenant in the system with the provided user information
+  operationId: createTenant
+  requestBody:
+    description: User data for creating a new tenant
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/tenants/components.yml#/components/schemas/CreateTenantRequest'
+  responses:
+    "201":
+      description: tenant created successfully
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/tenants/components.yml#/components/schemas/CreateTenantResponse"
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

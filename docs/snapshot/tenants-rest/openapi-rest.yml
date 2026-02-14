@@ -1,0 +1,42 @@
+openapi: 3.0.3
+
+info:
+  title: Tenants API
+  description: Provides endpoints that allow tenants to manage tenant information within the system
+  contact:
+    name: Proactive Devs team
+    email: proactivedevs@gmail.com
+    url: 'http://proactivedevs.com'
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:8080/micclients
+    description: Localhost
+  - url: https://proactivedevs-template-des/micclients
+    description: DES
+  - url: https://proactivedevs-template-pre/micclients
+    description: PRE
+  - url: https://proactivedevs-template-prod/micclients
+    description: PRO
+
+tags:
+  - name: Tenants
+    description: Operations about Tenants management
+
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+paths:
+  /v1/tenants:
+    $ref: './v1/services/tenants/tenants-create.yml'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
