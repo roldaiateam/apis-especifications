@@ -104,7 +104,6 @@
     <script src="../../swagger-ui/swagger-ui-standalone-preset.js" charset="UTF-8"></script>
     <script>
         window.onload = function() {
-            // Use Netlify Function proxy to load specs from GitHub
             const branch = "develop";
             const specPath = "tenants/rest/openapi-rest.yml";
             const specUrl = `/.netlify/functions/github-spec-proxy?branch=${branch}&path=${specPath}`;
