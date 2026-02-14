@@ -5,7 +5,7 @@ info:
   description: |
     Tenants domain events published to RabbitMQ.
     This specification defines the events emitted when tenant-related actions occur in the system, such as tenant creation, updates, and deletions.
-     Consumers can subscribe to these events to react to changes in tenant data.
+     Consumers can subscribe to these events to react to changes in tenant.
   contact:
     name: ProactiveDevs Team
     email: team@proactivedevs.com
