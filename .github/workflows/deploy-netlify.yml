@@ -8,6 +8,13 @@ on:
       - '**/openapi*.yml'
       - 'scripts/generate-docs.py'
       - '.github/workflows/deploy-netlify.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'metadata.yml'
+      - '**/openapi*.yml'
+      - 'scripts/generate-docs.py'
+      - '.github/workflows/deploy-netlify.yml'
 
 permissions:
   contents: write
