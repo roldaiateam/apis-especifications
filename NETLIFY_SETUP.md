@@ -273,6 +273,85 @@ El workflow desplegará automáticamente:
 - **Push a `develop`** → Deploy preview en Netlify
 - **Pull Requests** → Deploy preview con comentario en el PR
 
+## 🔐 GitHub API Proxy Configuration
+
+This deployment uses a **Netlify Function** to proxy GitHub API requests securely.
+
+### Why Use a Proxy?
+
+The repository is **private**, so Swagger UI cannot load OpenAPI specs directly from GitHub without authentication. The proxy:
+- Keeps the authentication token **secure on the server**
+- Loads specs dynamically from GitHub (`main` and `develop` branches)
+- Avoids duplicating OpenAPI files in `docs/`
+- Uses caching to reduce API calls
+
+### Setup REPO_TOKEN
+
+**1. Create GitHub Fine-Grained Token:**
+
+1. Go to GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Fine-grained tokens**
+2. Click **"Generate new token"**
+3. Configure:
+   - **Token name:** `Netlify OpenAPI Proxy`
+   - **Repository access:** Only select repositories → `roldaiateam/apis-especifications`
+   - **Permissions:**
+     - Repository permissions → **Contents** → **Read-only** ✅
+   - **Expiration:** 90 days (renew periodically)
+4. Click **"Generate token"**
+5. **Copy the token** (starts with `ghp_...`)
+
+**2. Add to Netlify:**
+
+1. Go to your Netlify site → **Site settings** → **Build & deploy** → **Environment**
+2. Click **"Add variable"**
+3. Configure:
+   - **Key:** `REPO_TOKEN`
+   - **Value:** (paste the GitHub token)
+   - **Scopes:** **All** (production, deploy previews, branch deploys)
+4. Click **"Save"**
+
+### How It Works
+
+```
+Browser (Swagger UI)
+    ↓
+    GET /.netlify/functions/github-spec-proxy?branch=main&path=tenants/rest/openapi-rest.yml
+    ↓
+Netlify Function (server-side)
+    ↓
+    Authenticates with REPO_TOKEN
+    ↓
+GitHub API
+    ↓
+    Returns raw file content
+    ↓
+Netlify Function
+    ↓
+    Returns YAML to browser (with CORS headers)
+    ↓
+Swagger UI (renders)
+```
+
+**Example URLs:**
+- Stable: `/.netlify/functions/github-spec-proxy?branch=main&path=tenants/rest/openapi-rest.yml`
+- Snapshot: `/.netlify/functions/github-spec-proxy?branch=develop&path=tenants/rest/openapi-rest.yml`
+
+### Security Features
+
+✅ **Server-side only:** Token never exposed to browser
+✅ **Read-only access:** Token can only read files, not modify
+✅ **Repository scoped:** Token only works for `apis-especifications`
+✅ **Revocable:** Can be revoked instantly if compromised
+✅ **Rate limited:** GitHub API allows 5,000 requests/hour with token
+✅ **Cached:** 5-minute cache reduces API calls significantly
+
+### Monitoring
+
+Check Netlify Functions logs:
+1. Go to Netlify → **Functions** → `github-spec-proxy`
+2. View execution logs
+3. Verify no 401/403/404 errors
+
 ## 🐛 Solución de Problemas
 
 ### Problema: Nueva API no aparece en el catálogo
