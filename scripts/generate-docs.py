@@ -111,7 +111,7 @@ def generate_swagger_page(api_name, spec_url, version_type, definition_path, spe
     if not is_stable:
         warning_banner = '''
     <div class="warning-banner">
-        ⚠️ This is a SNAPSHOT version from the develop branch - not intended for production use
+        ⚠️ This is the SNAPSHOT version from the develop branch - not intended for production use
     </div>'''
 
     return f'''<!DOCTYPE html>
