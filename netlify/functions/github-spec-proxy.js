@@ -1,7 +1,31 @@
 export default async (request, context) => {
   const url = new URL(request.url);
-  const branch = url.searchParams.get('branch') || 'main';
-  const specPath = url.searchParams.get('path') || 'tenants/rest/openapi-rest.yml';
+
+  // Método 1: Parámetros explícitos (petición inicial del HTML)
+  let branch = url.searchParams.get('branch');
+  let specPath = url.searchParams.get('path');
+
+  // Método 2: Path relativo (referencias $ref de Swagger UI)
+  if (!branch || !specPath) {
+    // Extraer el path después de /github-spec-proxy/
+    const pathname = url.pathname;
+    const match = pathname.match(/\/github-spec-proxy\/(.+)/);
+
+    if (match) {
+      const relativePath = match[1]; // Ej: "v1/services/tenants/tenants-create.yml"
+
+      // Determinar branch basado en el Referer header
+      const referer = request.headers.get('referer') || '';
+      branch = referer.includes('/snapshot/') ? 'develop' : 'main';
+
+      // Construir path completo
+      specPath = `tenants/rest/${relativePath}`;
+    } else {
+      // Sin parámetros ni path válido - usar defaults
+      branch = 'main';
+      specPath = 'tenants/rest/openapi-rest.yml';
+    }
+  }
 
   const owner = 'roldaiateam';
   const repo = 'apis-especifications';
