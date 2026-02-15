@@ -5,11 +5,9 @@ components:
       additionalProperties: false
       properties:
         errorCode:
-          type: integer
-          format: int64
+          type: string
           description: Error code
-          example: 1001
-          minimum: 1
+          example: "PRODUCT_NOT_FOUND"
         errorMessage:
           type: string
           description: Error message

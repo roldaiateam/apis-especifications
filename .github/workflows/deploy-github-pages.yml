@@ -1,0 +1,149 @@
+name: Deploy to GitHub Pages
+
+on:
+  workflow_run:
+    workflows: ["Publish Contracts"]
+    types: [completed]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # Only run if the previous workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Download published versions artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: published-versions
+          path: /tmp
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Check if artifact exists
+        id: check-artifact
+        run: |
+          if [ -f /tmp/module_versions.txt ]; then
+            echo "has_versions=true" >> $GITHUB_OUTPUT
+            echo "✅ Found module versions artifact"
+            cat /tmp/module_versions.txt
+          else
+            echo "has_versions=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No module versions found - nothing to deploy"
+          fi
+
+      - name: Generate documentation for published APIs
+        if: steps.check-artifact.outputs.has_versions == 'true'
+        run: |
+          echo "🚀 Generating documentation for published APIs..."
+          echo "=================================================="
+
+          # Helper function to detect version type
+          detect_version_type() {
+            local version=$1
+            if [[ "$version" =~ -SNAPSHOT$ ]]; then
+              echo "snapshot"
+            elif [[ "$version" =~ -unstable- ]]; then
+              echo "unstable"
+            else
+              echo "stable"
+            fi
+          }
+
+          # Helper function to detect API type
+          detect_api_type() {
+            local path=$1
+            if [[ "$path" == *"/event" ]]; then
+              echo "event"
+            elif [[ "$path" == *"/rest" ]]; then
+              echo "rest"
+            else
+              echo "rest"  # default
+            fi
+          }
+
+          # Process each published module
+          while IFS='|' read -r MODULE_PATH API_NAME ARTIFACT_ID MAVEN_VERSION; do
+            echo ""
+            echo "📦 Processing: $API_NAME"
+            echo "   Path: $MODULE_PATH"
+            echo "   Version: $MAVEN_VERSION"
+
+            # Extract API info
+            API_ID=$(echo "$MODULE_PATH" | tr '/' '-')
+            VERSION="$MAVEN_VERSION"
+            TYPE=$(detect_version_type "$VERSION")
+            API_TYPE=$(detect_api_type "$MODULE_PATH")
+            PUBLISHED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+            echo "   API ID: $API_ID"
+            echo "   Type: $TYPE ($API_TYPE)"
+            echo "   Published: $PUBLISHED_AT"
+
+            # Generate docs incrementally
+            python scripts/generate-docs.py --mode incremental \
+              --api "$API_ID" \
+              --api-name "$API_NAME" \
+              --api-type "$API_TYPE" \
+              --version "$VERSION" \
+              --type "$TYPE" \
+              --published-at "$PUBLISHED_AT" \
+              --source-path "$MODULE_PATH"
+
+            if [ $? -ne 0 ]; then
+              echo "❌ Failed to generate docs for $API_ID"
+              exit 1
+            fi
+
+            echo "✅ Documentation generated for $API_ID v$VERSION"
+          done < /tmp/module_versions.txt
+
+          echo ""
+          echo "=================================================="
+          echo "✅ All API documentation generated successfully"
+
+      - name: Setup Pages
+        if: steps.check-artifact.outputs.has_versions == 'true'
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        if: steps.check-artifact.outputs.has_versions == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './docs'
+
+      - name: Deploy to GitHub Pages
+        if: steps.check-artifact.outputs.has_versions == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Output deployment URL
+        if: steps.check-artifact.outputs.has_versions == 'true'
+        run: |
+          echo "🚀 Documentation deployed successfully!"
+          echo "📄 View at: ${{ steps.deployment.outputs.page_url }}"

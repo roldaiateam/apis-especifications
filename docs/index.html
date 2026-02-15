@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProactiveDevs API Contracts</title>
+    <title>API Contracts Catalog - ProactiveDevs</title>
     <link rel="icon" type="image/png" href="./swagger-ui/favicon-32x32.png">
     <style>
         * {
@@ -121,13 +121,16 @@
             border-radius: 12px;
             font-size: 0.85em;
             font-weight: 600;
-            background: #e7f3ff;
-            color: #0066cc;
         }
 
         .badge.openapi {
             background: #e7f3ff;
             color: #0066cc;
+        }
+
+        .badge.asyncapi {
+            background: #fff4e5;
+            color: #e65100;
         }
 
         .btn {
@@ -149,18 +152,14 @@
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
-        .btn.snapshot {
-            background: #ffc107;
-            color: #333;
-        }
-
-        .btn.snapshot:hover {
-            background: #ffb300;
-        }
-
         .api-cell {
             font-weight: 600;
             color: #333;
+        }
+
+        .version-info {
+            font-size: 0.9em;
+            color: #666;
         }
 
         footer {
@@ -234,46 +233,45 @@
             <div class="intro">
                 <h2>Welcome to the API Contracts Repository</h2>
                 <p>
-                    This catalog provides interactive documentation for all OpenAPI specifications in the ProactiveDevs ecosystem.
+                    This catalog provides interactive documentation for all API specifications in the ProactiveDevs ecosystem.
                     Each API contract is published as a versioned Maven artifact that can be consumed by microservices.
                 </p>
                 <p>
                     <strong>Repository:</strong> <a href="https://github.com/roldaiateam/apis-especifications" target="_blank">github.com/roldaiateam/apis-especifications</a>
                 </p>
                 <p>
-                    <strong>Deployment:</strong> This site is automatically deployed to Netlify via GitHub Actions.
+                    <strong>Deployment:</strong> This site is automatically deployed to GitHub Pages when new API versions are published.
                 </p>
             </div>
 
-            <h2 style="margin-bottom: 20px; color: #333;">Available REST APIs</h2>
+            <h2 style="margin-bottom: 20px; color: #333;">Available APIs</h2>
 
+            
             <table>
                 <thead>
                     <tr>
                         <th>API Name</th>
                         <th>Type</th>
-                        <th>Stable (main)</th>
-                        <th>Snapshot (develop)</th>
+                        <th>Latest Versions</th>
+                        <th>Documentation</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td class="api-cell">Tenants REST API</td>
                         <td><span class="badge openapi">OpenAPI 3.0</span></td>
+                        <td class="version-info">Snapshot: v0.0.1-SNAPSHOT</td>
                         <td>
-                            <a href="./stable/tenants-rest/" class="btn">View Swagger</a>
-                        </td>
-                        <td>
-                            <a href="./snapshot/tenants-rest/" class="btn snapshot">View Swagger</a>
+                            <a href="./apis/tenants-rest/" class="btn">View Documentation</a>
                         </td>
                     </tr>
                 </tbody>
             </table>
+            
 
             <div class="note">
-                <strong>Note:</strong> AsyncAPI specifications (event-driven APIs) are not displayed via Swagger UI.
-                To view AsyncAPI contracts, please use <a href="https://studio.asyncapi.com/" target="_blank">AsyncAPI Studio</a>
-                or download the specifications directly from the repository.
+                <strong>💡 Tip:</strong> Each API page includes a version selector to browse all published versions (stable, snapshot, and unstable).
+                Click "View Documentation" to explore the interactive Swagger UI.
             </div>
 
             <h2 style="margin: 30px 0 20px; color: #333;">Using API Contracts in Your Microservice</h2>
@@ -293,8 +291,8 @@
 
 &lt;dependency&gt;
     &lt;groupId&gt;com.proactivedevs.contracts&lt;/groupId&gt;
-    &lt;artifactId&gt;tenants-rest-stable&lt;/artifactId&gt;
-    &lt;version&gt;0.0.1&lt;/version&gt;
+    &lt;artifactId&gt;{api-name}-stable&lt;/artifactId&gt;
+    &lt;version&gt;{version}&lt;/version&gt;
 &lt;/dependency&gt;</code></pre>
                 <p style="margin-top: 15px;">
                     For more information, visit the

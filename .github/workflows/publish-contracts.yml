@@ -433,7 +433,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          
+
           # Read module versions and create individual tags
           while IFS='|' read -r MODULE_PATH API_NAME ARTIFACT_ID MAVEN_VERSION; do
             TAG_NAME="${ARTIFACT_ID}-v${MAVEN_VERSION}"
@@ -441,5 +441,13 @@ jobs:
             git tag -a "$TAG_NAME" -m "Release $API_NAME version $MAVEN_VERSION"
             git push origin "$TAG_NAME"
           done < /tmp/module_versions.txt
-          
+
           echo "✅ All tags created and pushed"
+
+      - name: Upload published versions artifact
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: published-versions
+          path: /tmp/module_versions.txt
+          retention-days: 1
