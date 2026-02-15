@@ -1,0 +1,571 @@
+name: PR Documentation Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'metadata.yml'
+      - '**/openapi*.yml'
+      - '**/asyncapi.yml'
+      - 'scripts/generate-docs.py'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyyaml
+
+      - name: Detect changed APIs
+        id: detect-changes
+        run: |
+          echo "🔍 Detecting changed APIs in this PR..."
+          echo "=================================================="
+
+          # Get list of changed files
+          git fetch origin ${{ github.base_ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Initialize array for changed APIs
+          CHANGED_APIS=()
+
+          # Check if metadata.yml changed (affects all APIs)
+          if echo "$CHANGED_FILES" | grep -q "^metadata.yml$"; then
+            echo "⚠️  metadata.yml changed - generating preview for all APIs"
+            ALL_APIS="true"
+          else
+            ALL_APIS="false"
+          fi
+
+          # Detect specific API changes
+          while IFS= read -r file; do
+            if [[ "$file" =~ ^([^/]+)/([^/]+)/(openapi|asyncapi) ]]; then
+              MODULE_PATH="${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+
+              # Check if already in array
+              if [[ ! " ${CHANGED_APIS[@]} " =~ " ${MODULE_PATH} " ]]; then
+                CHANGED_APIS+=("$MODULE_PATH")
+                echo "📦 Found changed API: $MODULE_PATH"
+              fi
+            fi
+          done <<< "$CHANGED_FILES"
+
+          # Save to output
+          if [ "$ALL_APIS" = "true" ]; then
+            echo "preview_all=true" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+          elif [ ${#CHANGED_APIS[@]} -gt 0 ]; then
+            # Join array with commas
+            APIS_LIST=$(IFS=,; echo "${CHANGED_APIS[*]}")
+            echo "changed_apis=$APIS_LIST" >> $GITHUB_OUTPUT
+            echo "preview_all=false" >> $GITHUB_OUTPUT
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo ""
+            echo "Will generate preview for: $APIS_LIST"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "⚠️  No API changes detected"
+          fi
+
+          echo "=================================================="
+
+      - name: Generate preview documentation
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        run: |
+          echo "🚀 Generating preview documentation..."
+          echo "=================================================="
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PREVIEW_DIR="docs-preview/pr-$PR_NUMBER"
+
+          mkdir -p "$PREVIEW_DIR"
+
+          # Helper function to detect API type
+          detect_api_type() {
+            local path=$1
+            if [[ "$path" == *"/event" ]]; then
+              echo "event"
+            elif [[ "$path" == *"/rest" ]]; then
+              echo "rest"
+            else
+              echo "rest"  # default
+            fi
+          }
+
+          # Helper function to get API name from metadata.yml
+          get_api_name() {
+            local module_path=$1
+            python3 - <<EOF
+          import yaml
+          import sys
+
+          with open('metadata.yml', 'r') as f:
+              data = yaml.safe_load(f)
+
+          for api in data.get('apis', []):
+              if api.get('definition-path') == '$module_path':
+                  print(api.get('name', '$module_path'))
+                  sys.exit(0)
+
+          # Fallback
+          print('$module_path')
+          EOF
+          }
+
+          # Process changed APIs
+          if [ "${{ steps.detect-changes.outputs.preview_all }}" = "true" ]; then
+            # Generate for all APIs in metadata.yml
+            python3 - <<'PYEOF'
+          import yaml
+
+          with open('metadata.yml', 'r') as f:
+              data = yaml.safe_load(f)
+
+          for api in data.get('apis', []):
+              module_path = api.get('definition-path')
+              if module_path:
+                  print(module_path)
+          PYEOF
+          else
+            # Use specific changed APIs
+            echo "${{ steps.detect-changes.outputs.changed_apis }}" | tr ',' '\n'
+          fi | while IFS= read -r MODULE_PATH; do
+            [ -z "$MODULE_PATH" ] && continue
+
+            echo ""
+            echo "📦 Processing: $MODULE_PATH"
+
+            API_ID=$(echo "$MODULE_PATH" | tr '/' '-')
+            API_NAME=$(get_api_name "$MODULE_PATH")
+            API_TYPE=$(detect_api_type "$MODULE_PATH")
+
+            echo "   API ID: $API_ID"
+            echo "   API Name: $API_NAME"
+            echo "   API Type: $API_TYPE"
+
+            # Generate preview docs (no versioning, just current state)
+            OUTPUT_DIR="$PREVIEW_DIR/apis/$API_ID"
+            mkdir -p "$OUTPUT_DIR"
+
+            # Copy API spec and components
+            if [ "$API_TYPE" = "rest" ]; then
+              SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
+            else
+              SPEC_FILE="$MODULE_PATH/asyncapi.yml"
+            fi
+
+            if [ ! -f "$SPEC_FILE" ]; then
+              echo "   ⚠️  Spec file not found: $SPEC_FILE"
+              continue
+            fi
+
+            # Copy spec and all referenced files
+            cp "$SPEC_FILE" "$OUTPUT_DIR/"
+
+            # Copy v* directories if they exist (for $ref files)
+            if [ -d "$MODULE_PATH/v1" ]; then
+              cp -r "$MODULE_PATH/v1" "$OUTPUT_DIR/"
+            fi
+            if [ -d "$MODULE_PATH/v2" ]; then
+              cp -r "$MODULE_PATH/v2" "$OUTPUT_DIR/"
+            fi
+            if [ -d "$MODULE_PATH/v3" ]; then
+              cp -r "$MODULE_PATH/v3" "$OUTPUT_DIR/"
+            fi
+
+            # Generate simple viewer page
+            SPEC_FILENAME=$(basename "$SPEC_FILE")
+
+            cat > "$OUTPUT_DIR/index.html" <<'HTMLEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>API_NAME_PLACEHOLDER - PR Preview</title>
+            <link rel="stylesheet" type="text/css" href="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui.css">
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              .preview-banner {
+                background: #ffc107;
+                color: #333;
+                padding: 12px 20px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                font-weight: 600;
+                text-align: center;
+                border-bottom: 2px solid #ff9800;
+              }
+              .preview-banner a {
+                color: #1976d2;
+                text-decoration: none;
+              }
+              .preview-banner a:hover {
+                text-decoration: underline;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="preview-banner">
+              ⚠️ PR Preview #PR_NUMBER_PLACEHOLDER - This is not a published version
+            </div>
+            <div id="swagger-ui"></div>
+
+            <script src="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui-bundle.js"></script>
+            <script src="https://unpkg.com/swagger-ui-dist@5.10.5/swagger-ui-standalone-preset.js"></script>
+            <script>
+              window.onload = function() {
+                SwaggerUIBundle({
+                  url: "./SPEC_FILENAME_PLACEHOLDER",
+                  dom_id: '#swagger-ui',
+                  deepLinking: true,
+                  presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                  ],
+                  plugins: [
+                    SwaggerUIBundle.plugins.DownloadUrl
+                  ],
+                  layout: "StandaloneLayout"
+                });
+              };
+            </script>
+          </body>
+          </html>
+          HTMLEOF
+
+            # Replace placeholders
+            sed -i "s/API_NAME_PLACEHOLDER/$API_NAME/g" "$OUTPUT_DIR/index.html"
+            sed -i "s/PR_NUMBER_PLACEHOLDER/$PR_NUMBER/g" "$OUTPUT_DIR/index.html"
+            sed -i "s/SPEC_FILENAME_PLACEHOLDER/$SPEC_FILENAME/g" "$OUTPUT_DIR/index.html"
+
+            echo "   ✅ Preview generated: $OUTPUT_DIR"
+          done
+
+          # Generate index page for preview
+          cat > "$PREVIEW_DIR/index.html" <<'INDEXEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>API Documentation - PR #PR_NUMBER_PLACEHOLDER Preview</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                margin: 0;
+                padding: 0;
+                background: #f5f5f5;
+              }
+              .preview-banner {
+                background: #ffc107;
+                color: #333;
+                padding: 16px 20px;
+                font-weight: 600;
+                text-align: center;
+                border-bottom: 3px solid #ff9800;
+                font-size: 18px;
+              }
+              .container {
+                max-width: 1200px;
+                margin: 40px auto;
+                padding: 0 20px;
+              }
+              h1 {
+                color: #333;
+                margin-bottom: 10px;
+              }
+              .subtitle {
+                color: #666;
+                margin-bottom: 30px;
+              }
+              .api-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 20px;
+              }
+              .api-card {
+                background: white;
+                border-radius: 8px;
+                padding: 24px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: transform 0.2s, box-shadow 0.2s;
+              }
+              .api-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+              }
+              .api-card h2 {
+                margin: 0 0 12px 0;
+                color: #1976d2;
+                font-size: 20px;
+              }
+              .api-card p {
+                margin: 0 0 16px 0;
+                color: #666;
+                font-size: 14px;
+              }
+              .api-card a {
+                display: inline-block;
+                background: #1976d2;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 4px;
+                font-weight: 500;
+                transition: background 0.2s;
+              }
+              .api-card a:hover {
+                background: #1565c0;
+              }
+              .badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-left: 8px;
+              }
+              .badge.rest {
+                background: #e3f2fd;
+                color: #1976d2;
+              }
+              .badge.event {
+                background: #f3e5f5;
+                color: #7b1fa2;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="preview-banner">
+              ⚠️ PR #PR_NUMBER_PLACEHOLDER Preview - These changes are not published yet
+            </div>
+            <div class="container">
+              <h1>API Documentation Preview</h1>
+              <p class="subtitle">Pull Request #PR_NUMBER_PLACEHOLDER</p>
+
+              <div class="api-grid" id="api-list">
+                <!-- APIs will be inserted here -->
+              </div>
+            </div>
+
+            <script>
+              // Auto-discover APIs from folder structure
+              const apiContainer = document.getElementById('api-list');
+
+              // This will be populated by a separate script that scans the apis/ directory
+              // For now, we'll add a note
+              apiContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">Loading APIs...</p>';
+
+              // In a real deployment, this would fetch a manifest or scan directories
+              // For GitHub Pages, we'll generate this list during build
+            </script>
+          </body>
+          </html>
+          INDEXEOF
+
+          sed -i "s/PR_NUMBER_PLACEHOLDER/$PR_NUMBER/g" "$PREVIEW_DIR/index.html"
+
+          # Create API list for index page
+          API_LIST_HTML=""
+          for api_dir in "$PREVIEW_DIR/apis"/*; do
+            [ -d "$api_dir" ] || continue
+
+            API_ID=$(basename "$api_dir")
+            API_NAME=$(echo "$API_ID" | tr '-' ' ' | sed 's/\b\(.\)/\u\1/g')
+
+            # Detect type from spec file
+            if [ -f "$api_dir/openapi-rest.yml" ]; then
+              API_TYPE="REST"
+              TYPE_CLASS="rest"
+            else
+              API_TYPE="Event"
+              TYPE_CLASS="event"
+            fi
+
+            API_LIST_HTML+="<div class='api-card'>"
+            API_LIST_HTML+="<h2>$API_NAME <span class='badge $TYPE_CLASS'>$API_TYPE</span></h2>"
+            API_LIST_HTML+="<p>Preview documentation for this API</p>"
+            API_LIST_HTML+="<a href='./apis/$API_ID/'>View Documentation →</a>"
+            API_LIST_HTML+="</div>"
+          done
+
+          # Replace loading message with actual API list
+          if [ -n "$API_LIST_HTML" ]; then
+            sed -i "s|<p style=\"grid-column: 1/-1.*</p>|$API_LIST_HTML|" "$PREVIEW_DIR/index.html"
+          fi
+
+          echo ""
+          echo "=================================================="
+          echo "✅ Preview documentation generated at: $PREVIEW_DIR"
+          ls -la "$PREVIEW_DIR"
+
+      - name: Deploy to GitHub Pages (preview branch)
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        run: |
+          echo "📤 Deploying preview to gh-pages-preview branch..."
+
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch or create gh-pages-preview branch
+          git fetch origin gh-pages-preview:gh-pages-preview || git checkout -b gh-pages-preview || git checkout --orphan gh-pages-preview
+          git checkout gh-pages-preview || exit 1
+
+          # Remove old preview for this PR if exists
+          rm -rf "pr-$PR_NUMBER"
+
+          # Copy new preview
+          cp -r "docs-preview/pr-$PR_NUMBER" "./"
+
+          # Create/update index of all PR previews
+          cat > index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>PR Previews</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 0 20px;
+              }
+              h1 { color: #333; }
+              ul { list-style: none; padding: 0; }
+              li {
+                background: white;
+                margin: 10px 0;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              a {
+                color: #1976d2;
+                text-decoration: none;
+                font-weight: 500;
+              }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>📄 Pull Request Previews</h1>
+            <ul id="pr-list"></ul>
+            <script>
+              // List all pr-* directories
+              const prDirs = [];
+          EOF
+
+          for pr_dir in pr-*; do
+            [ -d "$pr_dir" ] || continue
+            PR_NUM="${pr_dir#pr-}"
+            echo "      prDirs.push('$PR_NUM');" >> index.html
+          done
+
+          cat >> index.html <<'EOF'
+
+              const list = document.getElementById('pr-list');
+              prDirs.sort((a, b) => b - a).forEach(num => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="./pr-${num}/">PR #${num} Preview →</a>`;
+                list.appendChild(li);
+              });
+
+              if (prDirs.length === 0) {
+                list.innerHTML = '<li>No active PR previews</li>';
+              }
+            </script>
+          </body>
+          </html>
+          EOF
+
+          # Commit and push
+          git add .
+          git commit -m "Deploy preview for PR #$PR_NUMBER" || echo "No changes to commit"
+          git push origin gh-pages-preview --force
+
+          echo "✅ Preview deployed to gh-pages-preview branch"
+
+      - name: Comment PR with preview URL
+        if: steps.detect-changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const repo = context.repo;
+            const previewUrl = `https://${repo.owner}.github.io/${repo.repo}/pr-${prNumber}/`;
+
+            // Check if we already commented
+            const comments = await github.rest.issues.listComments({
+              owner: repo.owner,
+              repo: repo.repo,
+              issue_number: prNumber,
+            });
+
+            const botComment = comments.data.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('📄 API Documentation Preview')
+            );
+
+            const commentBody = `## 📄 API Documentation Preview
+
+Your API changes are ready for preview:
+
+🔗 **[View All API Previews](${previewUrl})**
+
+---
+⚠️ This is a preview build. Changes are not published to GitHub Packages yet.
+
+<sub>Preview updated: ${new Date().toISOString()}</sub>`;
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: repo.owner,
+                repo: repo.repo,
+                comment_id: botComment.id,
+                body: commentBody,
+              });
+              console.log('Updated existing preview comment');
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: repo.owner,
+                repo: repo.repo,
+                issue_number: prNumber,
+                body: commentBody,
+              });
+              console.log('Created new preview comment');
+            }
+
+      - name: No changes detected
+        if: steps.detect-changes.outputs.has_changes != 'true'
+        run: |
+          echo "ℹ️  No API changes detected in this PR"
+          echo "The preview workflow only runs when API specifications are modified"

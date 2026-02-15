@@ -37,19 +37,28 @@ apis-especifications/
 
 ## Interactive API Documentation
 
-Browse and test our OpenAPI contracts interactively using Swagger UI:
+Browse and test our API contracts interactively with version history and PR previews.
 
-**Netlify Site:** The site will be deployed automatically via GitHub Actions to Netlify.
+**GitHub Pages:** https://roldaiateam.github.io/apis-especifications/
 
-### Available REST APIs
+### Features
 
-| API | Stable (main) | Snapshot (develop) |
-|-----|---------------|-------------------|
-| Tenants REST API | Available at `/stable/tenants-rest/` | Available at `/snapshot/tenants-rest/` |
+- **Version History**: Browse all published versions of each API (stable, snapshot, unstable)
+- **Version Selector**: Switch between different versions dynamically in the UI
+- **PR Previews**: Automatic preview documentation for Pull Requests with live URL
+- **Automatic Updates**: Documentation deploys automatically when new versions are published to GitHub Packages
 
-**Note:** AsyncAPI specifications (event-driven APIs) are not displayed via Swagger UI. Use [AsyncAPI Studio](https://studio.asyncapi.com/) or download the specs from this repository.
+### Available APIs
 
-**Setup:** See [NETLIFY_SETUP.md](./NETLIFY_SETUP.md) for deployment configuration.
+The documentation catalog is automatically generated and includes all published APIs with their version history. Visit the GitHub Pages site to explore:
+
+- REST APIs with interactive Swagger UI
+- Version comparison and selection
+- Complete OpenAPI specifications
+
+**Note:** AsyncAPI specifications (event-driven APIs) are bundled in the Maven artifacts but not displayed in the web documentation. Use [AsyncAPI Studio](https://studio.asyncapi.com/) or access them from the JAR metadata.
+
+**Setup:** See [GITHUB_PAGES_SETUP.md](./GITHUB_PAGES_SETUP.md) for deployment architecture and configuration.
 
 ## Maven Artifacts
 

@@ -7,20 +7,14 @@ components:
           type: string
           description: First name of the user
           minLength: 2
-          maxLength: 100
+          maxLength: 50
           example: "John Doe"
         lastName:
           type: string
           description: Last name of the user
-          minLength: 2
+          minLength: 4
           maxLength: 100
           example: "Smith"
-        username:
-          type: string
-          description: Username for the user account
-          minLength: 4
-          maxLength: 50
-          example: "johndoe"
         email:
           type: string
           format: email
@@ -37,21 +31,27 @@ components:
           type: string
           description: Phone number of the user
           minLength: 10
-          maxLength: 20
+          maxLength: 15
           example: "+34633852671"
         companyName:
           type: string
           description: Company name of the tenant
-          minLength: 2
-          maxLength: 150
+          minLength: 4
+          maxLength: 100
           example: "Acme Corporation"
+        companyTin:
+          type: string
+          description: Tax Identification Number of the company
+          minLength: 9
+          maxLength: 9
+          example: "123456789"
       required:
         - firstName
         - lastName
-        - username
         - email
         - password
         - companyName
+        - companyTin
     
     CreateTenantResponse:
       type: object
