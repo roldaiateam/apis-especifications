@@ -125,7 +125,7 @@ jobs:
 
           echo ""
           echo "=================================================="
-          echo "✅ All API documentation generated successfully"
+          echo "✅ All API documentations generated successfully"
 
       - name: Setup Pages
         if: steps.check-artifact.outputs.has_versions == 'true'
