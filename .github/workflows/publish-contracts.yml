@@ -449,8 +449,14 @@ jobs:
 
           echo "✅ All tags created and pushed"
 
+      - name: Prepare artifact for deployment
+        run: |
+          # Ensure the file exists (create empty if no changes)
+          touch /tmp/module_versions.txt
+          echo "📦 Artifact content:"
+          cat /tmp/module_versions.txt || echo "(empty - no API modules published)"
+
       - name: Upload published versions artifact
-        if: steps.detect-changes.outputs.has_changes == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: published-versions

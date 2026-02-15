@@ -45,16 +45,17 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
 
-      - name: Check if artifact exists
+      - name: Check if artifact has content
         id: check-artifact
         run: |
-          if [ -f /tmp/module_versions.txt ]; then
+          if [ -f /tmp/module_versions.txt ] && [ -s /tmp/module_versions.txt ]; then
             echo "has_versions=true" >> $GITHUB_OUTPUT
-            echo "✅ Found module versions artifact"
+            echo "✅ Found module versions to deploy:"
             cat /tmp/module_versions.txt
           else
             echo "has_versions=false" >> $GITHUB_OUTPUT
-            echo "⚠️  No module versions found - nothing to deploy"
+            echo "ℹ️  No API modules published - skipping documentation deployment"
+            echo "   This is expected when only workflow files or documentation changes"
           fi
 
       - name: Generate documentation for published APIs
@@ -147,3 +148,10 @@ jobs:
         run: |
           echo "🚀 Documentation deployed successfully!"
           echo "📄 View at: ${{ steps.deployment.outputs.page_url }}"
+
+      - name: Skip deployment message
+        if: steps.check-artifact.outputs.has_versions != 'true'
+        run: |
+          echo "ℹ️  Skipping documentation deployment"
+          echo "   Reason: No API modules were published in this workflow run"
+          echo "   This is expected when only infrastructure files changed"
