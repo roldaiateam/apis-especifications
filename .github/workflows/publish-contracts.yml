@@ -32,20 +32,25 @@ jobs:
         id: detect-changes
         run: |
           echo "Detecting modules with changes in this push..."
-          
+
           # For the first push, compare with empty tree
           if git rev-parse HEAD~1 >/dev/null 2>&1; then
             CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
           else
             CHANGED_FILES=$(git ls-files)
           fi
-          
+
           echo "Changed files:"
           echo "$CHANGED_FILES"
-          
+
           # Find unique module directories that have changes
-          CHANGED_MODULES=$(echo "$CHANGED_FILES" | grep -E '^[^/]+/[^/]+/' | cut -d'/' -f1-2 | sort -u || true)
-          
+          # Exclude non-module directories like .github, docs, scripts, etc.
+          CHANGED_MODULES=$(echo "$CHANGED_FILES" | \
+            grep -E '^[^/]+/[^/]+/' | \
+            grep -v -E '^(\.github|docs|scripts|netlify)/' | \
+            cut -d'/' -f1-2 | \
+            sort -u || true)
+
           if [ -z "$CHANGED_MODULES" ]; then
             echo "No contract modules changed in this push"
             echo "has_changes=false" >> $GITHUB_OUTPUT
