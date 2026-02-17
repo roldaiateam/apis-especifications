@@ -23,7 +23,8 @@ apis-especifications/
 │       └── publish-contracts.yml     # Contract publication
 ├── metadata.yml                      # Global API catalog
 ├── tenants/
-│   └── event/                       # Tenants AsyncAPI contract (events)
+│   ├── event/                       # Tenants AsyncAPI contract (RabbitMQ events)
+│   ├── websocket/                   # Tenants AsyncAPI contract (WebSocket streaming)
 │       ├── asyncapi.yml             # AsyncAPI 3.0 specification (SOURCE OF TRUTH for version)
 │       ├── tenants-avro/            # Avro schemas with import pattern
 │       │   └── v1/
@@ -70,14 +71,20 @@ All contracts are published to GitHub Packages under:
 
 | Contract | ArtifactId | Type | Version |
 |----------|-----------|------|---------|
-| Tenants Events | `tenants-event` | AsyncAPI | 1.0.0 |
-| Tenants REST | `tenants-rest-stable` | OpenAPI | 0.0.1 |
+| Tenants Events | `tenants-event` | AsyncAPI (RabbitMQ) | 1.0.3 |
+| Tenants WebSocket | `tenants-websocket-stable` | AsyncAPI (WSS) | 0.0.1 |
+| Tenants REST | `tenants-rest-stable` | OpenAPI | 0.0.4 |
 
 ## Versioning Strategy
 
-### Single Source of Truth: `asyncapi.yml`
+### Single Source of Truth: API Spec Files
 
-The **`info.version`** field in each contract's `asyncapi.yml` is the **authoritative version**. The Maven POM version is automatically synchronized from this value during CI/CD.
+The **`info.version`** field in each contract's specification file is the **authoritative version**:
+- **REST APIs**: `openapi-rest.yml`
+- **Event APIs (RabbitMQ)**: `asyncapi.yml`
+- **WebSocket APIs**: `asyncapi.yml`
+
+The Maven POM version is automatically synchronized from this value during CI/CD.
 
 **Example:**
 ```yaml
@@ -206,6 +213,111 @@ InputStream avroSchema = getClass()
     .getClassLoader()
     .getResourceAsStream("META-INF/asyncapi/tenants-avro/v1/tenant-created-envelope.avsc");
 ```
+
+## API Contract Types
+
+### WebSocket API Contracts (AsyncAPI + WSS)
+
+WebSocket contracts define real-time bidirectional streaming APIs using AsyncAPI 3.0 with WebSocket Secure (WSS) protocol. These contracts enable push-based communication for scenarios requiring instant updates.
+
+**Key Features:**
+- Real-time bidirectional streaming communication
+- JWT bearer token authentication
+- Avro serialization for efficient message encoding
+- Pre-compiled Avro classes included in JAR
+- Server-sent status updates with structured events
+
+**Example: Tenants WebSocket**
+
+```yaml
+asyncapi: 3.0.0
+info:
+  title: Tenants Websockets API
+  version: 0.0.1
+
+servers:
+  production:
+    host: api.midominio.com
+    protocol: wss
+
+channels:
+  tenantProvisioningStatus:
+    address: /ws/tenants/{tenantId}/provisioning-status
+    messages:
+      TenantProvisioningStatusEvent:
+        contentType: application/vnd.apache.avro+json
+        payload:
+          $ref: "tenants-avro/v1/tenant-provisioning-status-envelope.avsc"
+```
+
+**Maven Dependency:**
+```xml
+<dependency>
+    <groupId>com.proactivedevs.contracts</groupId>
+    <artifactId>tenants-websocket-stable</artifactId>
+    <version>0.0.1</version>
+</dependency>
+```
+
+**Consumer Example (Java):**
+```java
+import com.proactivedevs.contracts.tenants.websocket.v1.*;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.apache.avro.io.*;
+import org.apache.avro.specific.SpecificDatumReader;
+
+// WebSocket client connection
+String wsUrl = "wss://api.midominio.com/ws/tenants/tenant-123/provisioning-status";
+WebSocketClient client = new StandardWebSocketClient();
+
+WebSocketHandler handler = new TextWebSocketHandler() {
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        // Deserialize Avro message
+        byte[] payload = message.getPayload().getBytes();
+        SpecificDatumReader<TenantProvisioningStatusEventEnvelope> reader =
+            new SpecificDatumReader<>(TenantProvisioningStatusEventEnvelope.class);
+
+        BinaryDecoder decoder = DecoderFactory.get().binaryDecoder(payload, null);
+        TenantProvisioningStatusEventEnvelope event = reader.read(null, decoder);
+
+        // Process the event
+        System.out.println("Tenant ID: " + event.getPayload().getTenantId());
+        System.out.println("Status: " + event.getPayload().getStatus());
+        System.out.println("Progress: " + event.getPayload().getProgress() + "%");
+
+        // Handle different statuses
+        switch (event.getPayload().getStatus()) {
+            case PROVISIONING:
+                updateUI("Provisioning in progress...");
+                break;
+            case COMPLETED:
+                updateUI("Provisioning completed successfully!");
+                break;
+            case FAILED:
+                handleError(event.getPayload().getError());
+                break;
+        }
+    }
+};
+
+// Connect with JWT authentication
+WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+headers.add("Authorization", "Bearer " + jwtToken);
+client.doHandshake(handler, headers, URI.create(wsUrl));
+```
+
+**Status Enum Values:**
+- `PENDING`: Initial state, awaiting validation
+- `VALIDATING`: Checking tenant data and prerequisites
+- `PROVISIONING`: Creating tenant infrastructure
+- `CONFIGURING`: Setting up configuration and permissions
+- `COMPLETED`: Provisioning finished successfully
+- `FAILED`: Error occurred, check error field for details
+
+---
 
 ## CI/CD Pipeline
 

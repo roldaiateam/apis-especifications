@@ -1,0 +1,76 @@
+asyncapi: 3.0.0
+info:
+  title: Tenants Websockets API
+  version: 0.0.1
+  description: |
+    This API defines the WebSocket communication for tenant-related events in the ProactiveDevs system.
+    It allows clients to subscribe to tenant provisioning status updates and receive real-time notifications
+    when the provisioning lifecycle progresses.
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+
+servers:
+  production:
+    host: api.midominio.com
+    protocol: wss
+    description: Production WebSocket endpoint
+    tags:
+      - name: env:production
+
+channels:
+  tenantProvisioningStatus:
+    address: /ws/tenants/{tenantId}/provisioning-status
+    description: Stream of provisioning status updates for a specific tenant
+    parameters:
+      tenantId:
+        description: Unique identifier of the tenant
+    messages:
+      TenantProvisioningStatusEvent:
+        $ref: '#/components/messages/TenantProvisioningStatusEvent'
+
+operations:
+  receiveTenantProvisioningStatus:
+    action: receive
+    channel:
+      $ref: '#/channels/tenantProvisioningStatus'
+    summary: Receive tenant provisioning status updates
+    description: |
+      The server pushes provisioning status updates to connected WebSocket clients.
+      Each message represents a state change in the tenant provisioning lifecycle.
+    messages:
+      - $ref: '#/channels/tenantProvisioningStatus/messages/TenantProvisioningStatusEvent'
+
+components:
+  messages:
+    TenantProvisioningStatusEvent:
+      name: TenantProvisioningStatusEvent
+      title: Tenant Provisioning Status Event
+      summary: Event sent when the provisioning status of a tenant changes
+      contentType: application/vnd.apache.avro+json
+      schemaFormat: application/vnd.apache.avro+json;version=1.9.2
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: "tenants-avro/v1/tenant-provisioning-status-envelope.avsc"
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        properties:
+          correlation-id:
+            type: string
+            description: Correlation ID for tracing requests across services
+          content-type:
+            type: string
+            enum:
+              - application/vnd.apache.avro+json
+              - application/vnd.apache.avro
+            description: Content type of the message payload
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
