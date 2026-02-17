@@ -81,7 +81,7 @@ jobs:
             echo "📋 API spec type: $API_SPEC_TYPE"
             
             # Determine spec file based on type
-            if [ "$API_SPEC_TYPE" = "event" ]; then
+            if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
               SPEC_FILE="$MODULE_PATH/asyncapi.yml"
             elif [ "$API_SPEC_TYPE" = "rest" ]; then
               SPEC_FILE="$MODULE_PATH/openapi-rest.yml"

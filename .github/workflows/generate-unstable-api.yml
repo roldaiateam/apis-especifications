@@ -170,7 +170,7 @@ jobs:
           echo "📋 API spec type: $API_SPEC_TYPE"
           
           # Determine spec file based on type
-          if [ "$API_SPEC_TYPE" = "event" ]; then
+          if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
             SPEC_FILE="$MODULE_PATH/asyncapi.yml"
           elif [ "$API_SPEC_TYPE" = "rest" ]; then
             SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
@@ -314,7 +314,7 @@ jobs:
             const version = process.env.UNSTABLE_VERSION;
             const specType = process.env.SPEC_TYPE;
             
-            const typeLabel = specType === 'event' ? 'AsyncAPI' : 'OpenAPI';
+            const typeLabel = (specType === 'event' || specType === 'websocket') ? 'AsyncAPI' : 'OpenAPI';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
             
             const comment = `## ✅ Versión Unstable Generada Exitosamente

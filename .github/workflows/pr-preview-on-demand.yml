@@ -229,6 +229,8 @@ jobs:
             local path=$1
             if [[ "$path" == *"/event" ]]; then
               echo "event"
+            elif [[ "$path" == *"/websocket" ]]; then
+              echo "websocket"
             elif [[ "$path" == *"/rest" ]]; then
               echo "rest"
             else
@@ -323,7 +325,7 @@ jobs:
             SPEC_FILENAME=$(basename "$SPEC_FILE")
 
             # Choose viewer based on API type
-            if [ "$API_TYPE" = "event" ]; then
+            if [ "$API_TYPE" = "event" ] || [ "$API_TYPE" = "websocket" ]; then
               # AsyncAPI viewer
               cat > "$OUTPUT_DIR/index.html" <<'HTMLEOF'
           <!DOCTYPE html>
@@ -519,6 +521,10 @@ jobs:
                 background: #f3e5f5;
                 color: #7b1fa2;
               }
+              .badge.websocket {
+                background: #e8f5e9;
+                color: #2e7d32;
+              }
             </style>
           </head>
           <body>
@@ -555,6 +561,9 @@ jobs:
             if [ -f "$api_dir/openapi-rest.yml" ]; then
               API_TYPE="REST"
               TYPE_CLASS="rest"
+            elif [[ "$api_dir" == *"websocket"* ]]; then
+              API_TYPE="WebSocket"
+              TYPE_CLASS="websocket"
             else
               API_TYPE="Event"
               TYPE_CLASS="event"

@@ -94,7 +94,7 @@ jobs:
             echo "📋 API spec type: $API_SPEC_TYPE"
             
             # Determine spec file based on type
-            if [ "$API_SPEC_TYPE" = "event" ]; then
+            if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
               SPEC_FILE="$MODULE_PATH/asyncapi.yml"
             elif [ "$API_SPEC_TYPE" = "rest" ]; then
               SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
@@ -217,7 +217,7 @@ jobs:
              echo "📋 API spec type: $API_SPEC_TYPE"
              
              # Determine spec file based on type
-             if [ "$API_SPEC_TYPE" = "event" ]; then
+             if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
                SPEC_FILE="$MODULE_PATH/asyncapi.yml"
              elif [ "$API_SPEC_TYPE" = "rest" ]; then
                SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
@@ -358,7 +358,9 @@ jobs:
             
             # Determine API type label
             if [[ "$MODULE_PATH" == *"/event" ]]; then
-              TYPE_LABEL="AsyncAPI"
+              TYPE_LABEL="AsyncAPI (Event)"
+            elif [[ "$MODULE_PATH" == *"/websocket" ]]; then
+              TYPE_LABEL="AsyncAPI (WebSocket)"
             elif [[ "$MODULE_PATH" == *"/rest" ]]; then
               TYPE_LABEL="OpenAPI"
             else

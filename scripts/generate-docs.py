@@ -251,15 +251,15 @@ def find_spec_file(definition_path, api_type):
     Find the spec file in the given definition path.
 
     Args:
-        definition_path: Path to the API definition (e.g., "tenants/rest")
-        api_type: "rest" or "event"
+        definition_path: Path to the API definition (e.g., "tenants/rest", "tenants/websocket")
+        api_type: "rest", "event", or "websocket"
 
     Returns:
         str: Spec filename or None
     """
     spec_path = Path(definition_path)
 
-    if api_type == 'event':
+    if api_type in ['event', 'websocket']:
         if (spec_path / 'asyncapi.yml').exists():
             return 'asyncapi.yml'
     else:  # rest
@@ -606,8 +606,15 @@ def generate_index_page():
 
     api_rows = ''
     for api in sorted(apis, key=lambda x: x['name']):
-        type_label = 'AsyncAPI' if api['type'] == 'event' else 'OpenAPI 3.0'
-        type_badge_class = 'asyncapi' if api['type'] == 'event' else 'openapi'
+        if api['type'] == 'event':
+            type_label = 'AsyncAPI (Event)'
+            type_badge_class = 'asyncapi'
+        elif api['type'] == 'websocket':
+            type_label = 'AsyncAPI (WebSocket)'
+            type_badge_class = 'asyncapi-ws'
+        else:
+            type_label = 'OpenAPI 3.0'
+            type_badge_class = 'openapi'
 
         # Build version info
         version_info = []
@@ -761,6 +768,11 @@ def generate_index_page():
         .badge.asyncapi {{
             background: #fff4e5;
             color: #e65100;
+        }}
+
+        .badge.asyncapi-ws {{
+            background: #e8f5e9;
+            color: #2e7d32;
         }}
 
         .btn {{
@@ -1025,7 +1037,7 @@ def main():
     # Incremental mode arguments
     parser.add_argument('--api', help='API identifier (e.g., tenants-rest)')
     parser.add_argument('--api-name', help='Human-readable API name')
-    parser.add_argument('--api-type', choices=['rest', 'event'], help='API type')
+    parser.add_argument('--api-type', choices=['rest', 'event', 'websocket'], help='API type')
     parser.add_argument('--version', help='Version string (e.g., 0.0.1, 0.0.1-SNAPSHOT)')
     parser.add_argument('--type', choices=['stable', 'snapshot', 'unstable'], help='Version type')
     parser.add_argument('--published-at', help='Publication timestamp (ISO format)')

@@ -81,6 +81,8 @@ jobs:
             local path=$1
             if [[ "$path" == *"/event" ]]; then
               echo "event"
+            elif [[ "$path" == *"/websocket" ]]; then
+              echo "websocket"
             elif [[ "$path" == *"/rest" ]]; then
               echo "rest"
             else
