@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 0.0.3
+  version: 0.0.4
 
 servers:
   - url: http://localhost:8080/micclients
