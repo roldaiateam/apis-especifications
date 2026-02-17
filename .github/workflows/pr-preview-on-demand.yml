@@ -1,27 +1,53 @@
-name: PR Documentation Preview
+name: PR Preview on Demand
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'metadata.yml'
-      - '**/openapi*.yml'
-      - '**/asyncapi.yml'
-      - 'scripts/generate-docs.py'
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: write
   pull-requests: write
+  issues: write
 
 jobs:
   preview:
+    # Only run on PR comments that start with /generate-preview-api
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/generate-preview-api')
     runs-on: ubuntu-latest
 
     steps:
+      - name: Add reaction to comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+      - name: Get PR details
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            });
+
+            core.setOutput('head_ref', pr.data.head.ref);
+            core.setOutput('head_sha', pr.data.head.sha);
+            core.setOutput('pr_number', context.issue.number);
+
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ steps.pr.outputs.head_sha }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,15 +59,97 @@ jobs:
           python -m pip install --upgrade pip
           pip install pyyaml
 
-      - name: Detect changed APIs
+      - name: Parse command and detect APIs
+        id: parse
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          echo "Comment: $COMMENT_BODY"
+
+          # Check if --name flag is present
+          if echo "$COMMENT_BODY" | grep -q '\-\-name'; then
+            # Extract API name from --name "API Name" or --name 'API Name'
+            API_NAME=$(echo "$COMMENT_BODY" | sed -n 's/.*--name \+["\x27]\(.*\)["\x27].*/\1/p')
+            echo "Requested API: $API_NAME"
+
+            if [ -z "$API_NAME" ]; then
+              echo "❌ Could not parse API name from --name flag"
+              echo "mode=error" >> $GITHUB_OUTPUT
+              echo "error_message=Could not parse API name. Use format: /generate-preview-api --name \"API Name\"" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            # Find matching API in metadata.yml
+            MODULE_PATH=$(python3 - <<EOF
+          import yaml
+          import sys
+
+          with open('metadata.yml', 'r') as f:
+              data = yaml.safe_load(f)
+
+          target_name = """$API_NAME""".strip()
+
+          for api in data.get('apis', []):
+              api_name = api.get('name', '').strip()
+              if api_name.lower() == target_name.lower():
+                  print(api.get('definition-path', ''))
+                  sys.exit(0)
+
+          # Not found
+          sys.exit(1)
+          EOF
+          )
+
+            if [ $? -ne 0 ] || [ -z "$MODULE_PATH" ]; then
+              echo "❌ API '$API_NAME' not found in metadata.yml"
+              echo "mode=error" >> $GITHUB_OUTPUT
+              echo "error_message=API '$API_NAME' not found in metadata.yml" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "Found module path: $MODULE_PATH"
+            echo "mode=single" >> $GITHUB_OUTPUT
+            echo "api_name=$API_NAME" >> $GITHUB_OUTPUT
+            echo "module_path=$MODULE_PATH" >> $GITHUB_OUTPUT
+          else
+            # Generate preview for all changed APIs
+            echo "mode=all_changed" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Exit if error
+        if: steps.parse.outputs.mode == 'error'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'confused'
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `❌ **Error**: ${{ steps.parse.outputs.error_message }}\n\n**Usage:**\n- \`/generate-preview-api\` - Generate preview for all changed APIs\n- \`/generate-preview-api --name "API Name"\` - Generate preview for specific API`
+            });
+
+            core.setFailed('Command parsing error');
+
+      - name: Detect changed APIs (for all_changed mode)
+        if: steps.parse.outputs.mode == 'all_changed'
         id: detect-changes
         run: |
           echo "🔍 Detecting changed APIs in this PR..."
-          echo "=================================================="
+
+          # Get base branch
+          BASE_REF="${{ github.event.issue.pull_request.base.ref }}"
+
+          # Fetch base branch
+          git fetch origin develop
 
           # Get list of changed files
-          git fetch origin ${{ github.base_ref }}
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          CHANGED_FILES=$(git diff --name-only origin/develop...HEAD)
 
           echo "Changed files:"
           echo "$CHANGED_FILES"
@@ -81,22 +189,37 @@ jobs:
             echo "changed_apis=$APIS_LIST" >> $GITHUB_OUTPUT
             echo "preview_all=false" >> $GITHUB_OUTPUT
             echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo ""
             echo "Will generate preview for: $APIS_LIST"
           else
             echo "has_changes=false" >> $GITHUB_OUTPUT
             echo "⚠️  No API changes detected"
           fi
 
-          echo "=================================================="
+      - name: Exit if no changes (all_changed mode)
+        if: steps.parse.outputs.mode == 'all_changed' && steps.detect-changes.outputs.has_changes != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'confused'
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '⚠️ No API changes detected in this PR. The preview can only be generated for modified APIs.'
+            });
 
       - name: Generate preview documentation
-        if: steps.detect-changes.outputs.has_changes == 'true'
+        id: generate
         run: |
           echo "🚀 Generating preview documentation..."
-          echo "=================================================="
 
-          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
           PREVIEW_DIR="docs-preview/pr-$PR_NUMBER"
 
           mkdir -p "$PREVIEW_DIR"
@@ -133,10 +256,15 @@ jobs:
           EOF
           }
 
-          # Process changed APIs
-          if [ "${{ steps.detect-changes.outputs.preview_all }}" = "true" ]; then
-            # Generate for all APIs in metadata.yml
-            python3 - <<'PYEOF'
+          # Determine which APIs to process
+          if [ "${{ steps.parse.outputs.mode }}" = "single" ]; then
+            # Single API mode
+            echo "${{ steps.parse.outputs.module_path }}"
+          else
+            # All changed APIs mode
+            if [ "${{ steps.detect-changes.outputs.preview_all }}" = "true" ]; then
+              # Generate for all APIs in metadata.yml
+              python3 - <<'PYEOF'
           import yaml
 
           with open('metadata.yml', 'r') as f:
@@ -147,9 +275,10 @@ jobs:
               if module_path:
                   print(module_path)
           PYEOF
-          else
-            # Use specific changed APIs
-            echo "${{ steps.detect-changes.outputs.changed_apis }}" | tr ',' '\n'
+            else
+              # Use specific changed APIs
+              echo "${{ steps.detect-changes.outputs.changed_apis }}" | tr ',' '\n'
+            fi
           fi | while IFS= read -r MODULE_PATH; do
             [ -z "$MODULE_PATH" ] && continue
 
@@ -184,20 +313,58 @@ jobs:
             cp "$SPEC_FILE" "$OUTPUT_DIR/"
 
             # Copy v* directories if they exist (for $ref files)
-            if [ -d "$MODULE_PATH/v1" ]; then
-              cp -r "$MODULE_PATH/v1" "$OUTPUT_DIR/"
-            fi
-            if [ -d "$MODULE_PATH/v2" ]; then
-              cp -r "$MODULE_PATH/v2" "$OUTPUT_DIR/"
-            fi
-            if [ -d "$MODULE_PATH/v3" ]; then
-              cp -r "$MODULE_PATH/v3" "$OUTPUT_DIR/"
-            fi
+            for version_dir in "$MODULE_PATH"/v*; do
+              if [ -d "$version_dir" ]; then
+                cp -r "$version_dir" "$OUTPUT_DIR/"
+              fi
+            done
 
             # Generate simple viewer page
             SPEC_FILENAME=$(basename "$SPEC_FILE")
 
-            cat > "$OUTPUT_DIR/index.html" <<'HTMLEOF'
+            # Choose viewer based on API type
+            if [ "$API_TYPE" = "event" ]; then
+              # AsyncAPI viewer
+              cat > "$OUTPUT_DIR/index.html" <<'HTMLEOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>API_NAME_PLACEHOLDER - PR Preview</title>
+            <style>
+              body {
+                margin: 0;
+                padding: 0;
+              }
+              .preview-banner {
+                background: #ffc107;
+                color: #333;
+                padding: 12px 20px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                font-weight: 600;
+                text-align: center;
+                border-bottom: 2px solid #ff9800;
+                z-index: 1000;
+                position: relative;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="preview-banner">
+              ⚠️ PR Preview #PR_NUMBER_PLACEHOLDER - This is not a published version
+            </div>
+            <asyncapi-component
+              schemaUrl="./SPEC_FILENAME_PLACEHOLDER"
+              config='{"show": {"sidebar": true}, "sidebar": {"showServers": "byDefault", "showOperations": "byDefault"}}'
+            />
+            <script src="https://unpkg.com/@asyncapi/web-component@latest/lib/asyncapi-web-component.js" defer></script>
+          </body>
+          </html>
+          HTMLEOF
+            else
+              # OpenAPI (Swagger UI) viewer
+              cat > "$OUTPUT_DIR/index.html" <<'HTMLEOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
@@ -218,13 +385,6 @@ jobs:
                 font-weight: 600;
                 text-align: center;
                 border-bottom: 2px solid #ff9800;
-              }
-              .preview-banner a {
-                color: #1976d2;
-                text-decoration: none;
-              }
-              .preview-banner a:hover {
-                text-decoration: underline;
               }
             </style>
           </head>
@@ -256,11 +416,13 @@ jobs:
           </body>
           </html>
           HTMLEOF
+            fi
 
             # Replace placeholders
-            sed -i "s/API_NAME_PLACEHOLDER/$API_NAME/g" "$OUTPUT_DIR/index.html"
-            sed -i "s/PR_NUMBER_PLACEHOLDER/$PR_NUMBER/g" "$OUTPUT_DIR/index.html"
-            sed -i "s/SPEC_FILENAME_PLACEHOLDER/$SPEC_FILENAME/g" "$OUTPUT_DIR/index.html"
+            sed -i.bak "s/API_NAME_PLACEHOLDER/$API_NAME/g" "$OUTPUT_DIR/index.html"
+            sed -i.bak "s/PR_NUMBER_PLACEHOLDER/$PR_NUMBER/g" "$OUTPUT_DIR/index.html"
+            sed -i.bak "s/SPEC_FILENAME_PLACEHOLDER/$SPEC_FILENAME/g" "$OUTPUT_DIR/index.html"
+            rm "$OUTPUT_DIR/index.html.bak"
 
             echo "   ✅ Preview generated: $OUTPUT_DIR"
           done
@@ -368,26 +530,15 @@ jobs:
               <p class="subtitle">Pull Request #PR_NUMBER_PLACEHOLDER</p>
 
               <div class="api-grid" id="api-list">
-                <!-- APIs will be inserted here -->
+                API_LIST_PLACEHOLDER
               </div>
             </div>
-
-            <script>
-              // Auto-discover APIs from folder structure
-              const apiContainer = document.getElementById('api-list');
-
-              // This will be populated by a separate script that scans the apis/ directory
-              // For now, we'll add a note
-              apiContainer.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">Loading APIs...</p>';
-
-              // In a real deployment, this would fetch a manifest or scan directories
-              // For GitHub Pages, we'll generate this list during build
-            </script>
           </body>
           </html>
           INDEXEOF
 
-          sed -i "s/PR_NUMBER_PLACEHOLDER/$PR_NUMBER/g" "$PREVIEW_DIR/index.html"
+          sed -i.bak "s/PR_NUMBER_PLACEHOLDER/$PR_NUMBER/g" "$PREVIEW_DIR/index.html"
+          rm "$PREVIEW_DIR/index.html.bak"
 
           # Create API list for index page
           API_LIST_HTML=""
@@ -395,7 +546,10 @@ jobs:
             [ -d "$api_dir" ] || continue
 
             API_ID=$(basename "$api_dir")
-            API_NAME=$(echo "$API_ID" | tr '-' ' ' | sed 's/\b\(.\)/\u\1/g')
+
+            # Get API name from metadata
+            MODULE_PATH=$(echo "$API_ID" | tr '-' '/')
+            API_NAME=$(get_api_name "$MODULE_PATH")
 
             # Detect type from spec file
             if [ -f "$api_dir/openapi-rest.yml" ]; then
@@ -413,43 +567,54 @@ jobs:
             API_LIST_HTML+="</div>"
           done
 
-          # Replace loading message with actual API list
+          # Replace placeholder with actual API list
           if [ -n "$API_LIST_HTML" ]; then
-            sed -i "s|<p style=\"grid-column: 1/-1.*</p>|$API_LIST_HTML|" "$PREVIEW_DIR/index.html"
+            # Escape special characters for sed
+            API_LIST_HTML_ESCAPED=$(echo "$API_LIST_HTML" | sed 's/[&/\]/\\&/g')
+            sed -i.bak "s|API_LIST_PLACEHOLDER|$API_LIST_HTML_ESCAPED|" "$PREVIEW_DIR/index.html"
+            rm "$PREVIEW_DIR/index.html.bak"
           fi
 
           echo ""
-          echo "=================================================="
           echo "✅ Preview documentation generated at: $PREVIEW_DIR"
-          ls -la "$PREVIEW_DIR"
 
-      - name: Deploy to GitHub Pages (preview branch)
-        if: steps.detect-changes.outputs.has_changes == 'true'
+          # Set output for deployment step
+          echo "preview_dir=$PREVIEW_DIR" >> $GITHUB_OUTPUT
+
+      - name: Deploy to GitHub Pages
         run: |
           echo "📤 Deploying preview to gh-pages-preview branch..."
 
-          PR_NUMBER="${{ github.event.pull_request.number }}"
+          PR_NUMBER="${{ steps.pr.outputs.pr_number }}"
+          PREVIEW_DIR="${{ steps.generate.outputs.preview_dir }}"
 
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           # Fetch or create gh-pages-preview branch
-          git fetch origin gh-pages-preview:gh-pages-preview || git checkout -b gh-pages-preview || git checkout --orphan gh-pages-preview
-          git checkout gh-pages-preview || exit 1
+          git fetch origin gh-pages-preview:gh-pages-preview 2>/dev/null || git checkout --orphan gh-pages-preview || true
+          git checkout gh-pages-preview || git switch --orphan gh-pages-preview
+
+          # Clean working directory but keep our preview
+          git rm -rf . 2>/dev/null || true
+
+          # Restore any existing PR previews from remote
+          git checkout origin/gh-pages-preview -- . 2>/dev/null || true
 
           # Remove old preview for this PR if exists
           rm -rf "pr-$PR_NUMBER"
 
           # Copy new preview
-          cp -r "docs-preview/pr-$PR_NUMBER" "./"
+          cp -r "$PREVIEW_DIR" "./pr-$PR_NUMBER"
 
-          # Create/update index of all PR previews
+          # Generate index of all PR previews
           cat > index.html <<'EOF'
           <!DOCTYPE html>
           <html>
           <head>
             <title>PR Previews</title>
+            <meta charset="UTF-8">
             <style>
               body {
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -478,7 +643,6 @@ jobs:
             <h1>📄 Pull Request Previews</h1>
             <ul id="pr-list"></ul>
             <script>
-              // List all pr-* directories
               const prDirs = [];
           EOF
 
@@ -507,65 +671,91 @@ jobs:
 
           # Commit and push
           git add .
-          git commit -m "Deploy preview for PR #$PR_NUMBER" || echo "No changes to commit"
-          git push origin gh-pages-preview --force
-
-          echo "✅ Preview deployed to gh-pages-preview branch"
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to commit"
+          else
+            git commit -m "Deploy preview for PR #$PR_NUMBER"
+            git push origin gh-pages-preview
+            echo "✅ Preview deployed"
+          fi
 
       - name: Comment PR with preview URL
-        if: steps.detect-changes.outputs.has_changes == 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = context.payload.pull_request.number;
+            const prNumber = context.issue.number;
             const repo = context.repo;
-            const previewUrl = `https://${repo.owner}.github.io/${repo.repo}/pr-${prNumber}/`;
+            const repoName = repo.repo;
+            const owner = repo.owner;
 
-            // Check if we already commented
-            const comments = await github.rest.issues.listComments({
-              owner: repo.owner,
-              repo: repo.repo,
-              issue_number: prNumber,
-            });
-
-            const botComment = comments.data.find(comment =>
-              comment.user.type === 'Bot' &&
-              comment.body.includes('📄 API Documentation Preview')
-            );
-
-            const commentBody = `## 📄 API Documentation Preview
-
-Your API changes are ready for preview:
-
-🔗 **[View All API Previews](${previewUrl})**
-
----
-⚠️ This is a preview build. Changes are not published to GitHub Packages yet.
-
-<sub>Preview updated: ${new Date().toISOString()}</sub>`;
-
-            if (botComment) {
-              // Update existing comment
-              await github.rest.issues.updateComment({
-                owner: repo.owner,
-                repo: repo.repo,
-                comment_id: botComment.id,
-                body: commentBody,
+            // Check if GitHub Pages is configured
+            let previewUrl;
+            try {
+              const pages = await github.rest.repos.getPages({
+                owner: owner,
+                repo: repoName,
               });
-              console.log('Updated existing preview comment');
-            } else {
-              // Create new comment
-              await github.rest.issues.createComment({
-                owner: repo.owner,
-                repo: repo.repo,
-                issue_number: prNumber,
-                body: commentBody,
-              });
-              console.log('Created new preview comment');
+
+              // Use the actual GitHub Pages URL
+              const pagesUrl = pages.data.html_url || `https://${owner}.github.io/${repoName}`;
+              previewUrl = `${pagesUrl}/pr-${prNumber}/`;
+            } catch (error) {
+              // Fallback if Pages API fails
+              previewUrl = `https://${owner}.github.io/${repoName}/pr-${prNumber}/`;
             }
 
-      - name: No changes detected
-        if: steps.detect-changes.outputs.has_changes != 'true'
-        run: |
-          echo "ℹ️  No API changes detected in this PR"
-          echo "The preview workflow only runs when API specifications are modified"
+            const mode = '${{ steps.parse.outputs.mode }}';
+            const apiName = '${{ steps.parse.outputs.api_name }}';
+
+            let bodyHeader;
+            if (mode === 'single') {
+              bodyHeader = `## 📄 API Preview Generated: ${apiName}`;
+            } else {
+              bodyHeader = `## 📄 API Documentation Preview`;
+            }
+
+            const commentBody = `${bodyHeader}
+
+          Your API preview is ready! 🚀
+
+          🔗 **[View Preview](${previewUrl})**
+
+          ---
+          ⚠️ This is a preview build from this PR. Changes are not published yet.
+
+          <sub>Generated at: ${new Date().toISOString()}</sub>`;
+
+            // Add success reaction
+            await github.rest.reactions.createForIssueComment({
+              owner: owner,
+              repo: repoName,
+              comment_id: context.payload.comment.id,
+              content: 'rocket'
+            });
+
+            // Post comment
+            await github.rest.issues.createComment({
+              owner: owner,
+              repo: repoName,
+              issue_number: prNumber,
+              body: commentBody,
+            });
+
+      - name: Handle failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: '-1'
+            });
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '❌ Preview generation failed. Check the [workflow run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.'
+            });

@@ -19,15 +19,110 @@ jobs:
           fetch-depth: 0
         continue-on-error: true
 
-      - name: Stop if branch does not exist
-        if: failure()
+      - name: Check if branch exists
+        id: check-branch
         run: |
-          echo "ℹ️ gh-pages-preview branch does not exist yet"
-          exit 0
+          if git rev-parse --verify gh-pages-preview >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Make script executable
-        run: chmod +x scripts/cleanup-preview.sh
-
-      - name: Cleanup PR preview
+      - name: Cleanup preview
+        if: steps.check-branch.outputs.exists == 'true'
         run: |
-          bash scripts/cleanup-preview.sh "${{ github.event.pull_request.number }}"
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+
+          echo "🧹 Cleaning up preview for PR #$PR_NUMBER..."
+
+          # If the folder does not exist, exit without error
+          if [ ! -d "pr-$PR_NUMBER" ]; then
+            echo "ℹ️  No preview found for PR #$PR_NUMBER"
+            exit 0
+          fi
+
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Delete PR preview folder
+          rm -rf "pr-$PR_NUMBER"
+          echo "✅ Removed pr-$PR_NUMBER directory"
+
+          # Regenerate index page with remaining previews
+          cat > index.html <<'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <title>PR Previews</title>
+            <meta charset="UTF-8">
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                max-width: 800px;
+                margin: 40px auto;
+                padding: 0 20px;
+              }
+              h1 { color: #333; }
+              ul { list-style: none; padding: 0; }
+              li {
+                background: white;
+                margin: 10px 0;
+                padding: 15px;
+                border-radius: 8px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+              }
+              a {
+                color: #1976d2;
+                text-decoration: none;
+                font-weight: 500;
+              }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>📄 Pull Request Previews</h1>
+            <ul id="pr-list"></ul>
+            <script>
+              const prDirs = [];
+          EOF
+
+          # Add remaining PR directories
+          for pr_dir in pr-*; do
+            [ -d "$pr_dir" ] || continue
+            PR_NUM="${pr_dir#pr-}"
+            echo "      prDirs.push('$PR_NUM');" >> index.html
+          done
+
+          cat >> index.html <<'EOF'
+
+              const list = document.getElementById('pr-list');
+              prDirs.sort((a, b) => b - a).forEach(num => {
+                const li = document.createElement('li');
+                li.innerHTML = `<a href="./pr-${num}/">PR #${num} Preview →</a>`;
+                list.appendChild(li);
+              });
+
+              if (prDirs.length === 0) {
+                list.innerHTML = '<li>No active PR previews</li>';
+              }
+            </script>
+          </body>
+          </html>
+          EOF
+
+          # Commit changes
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to commit"
+          else
+            git commit -m "Remove preview for closed PR #$PR_NUMBER"
+            git push origin gh-pages-preview
+            echo "✅ Cleanup completed and pushed to gh-pages-preview"
+          fi
+
+      - name: No preview branch
+        if: steps.check-branch.outputs.exists != 'true'
+        run: |
+          echo "ℹ️  gh-pages-preview branch does not exist yet - nothing to clean up"
