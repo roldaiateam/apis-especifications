@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Tenants REST API
-  version: 0.0.2
+  version: 0.0.4
   description: >
     This API provides endpoints that allow tenants to manage tenant information within the system.
     It enables operations such as creating new tenants and managing tenant data.

@@ -17,95 +17,17 @@ jobs:
         with:
           ref: gh-pages-preview
           fetch-depth: 0
+        continue-on-error: true
 
-      - name: Remove PR preview directory
-        run: |
-          PR_NUMBER="${{ github.event.pull_request.number }}"
-
-          echo "🧹 Cleaning up preview for PR #$PR_NUMBER..."
-
-          if [ -d "pr-$PR_NUMBER" ]; then
-            rm -rf "pr-$PR_NUMBER"
-            echo "✅ Removed pr-$PR_NUMBER directory"
-
-            # Configure git
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-
-            # Update index.html to remove this PR from list
-            cat > index.html <<'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-  <title>PR Previews</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 0 20px;
-    }
-    h1 { color: #333; }
-    ul { list-style: none; padding: 0; }
-    li {
-      background: white;
-      margin: 10px 0;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    a {
-      color: #1976d2;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    a:hover { text-decoration: underline; }
-  </style>
-</head>
-<body>
-  <h1>📄 Pull Request Previews</h1>
-  <ul id="pr-list"></ul>
-  <script>
-    // List all pr-* directories
-    const prDirs = [];
-EOF
-
-            for pr_dir in pr-*; do
-              [ -d "$pr_dir" ] || continue
-              PR_NUM="${pr_dir#pr-}"
-              echo "    prDirs.push('$PR_NUM');" >> index.html
-            done
-
-            cat >> index.html <<'EOF'
-
-    const list = document.getElementById('pr-list');
-    prDirs.sort((a, b) => b - a).forEach(num => {
-      const li = document.createElement('li');
-      li.innerHTML = `<a href="./pr-${num}/">PR #${num} Preview →</a>`;
-      list.appendChild(li);
-    });
-
-    if (prDirs.length === 0) {
-      list.innerHTML = '<li>No active PR previews</li>';
-    }
-  </script>
-</body>
-</html>
-EOF
-
-            # Commit and push
-            git add .
-            git commit -m "Remove preview for closed PR #$PR_NUMBER"
-            git push origin gh-pages-preview
-
-            echo "✅ Preview cleaned up and index updated"
-          else
-            echo "ℹ️  No preview found for PR #$PR_NUMBER (already cleaned or never created)"
-          fi
-
-      - name: Handle missing branch
+      - name: Stop if branch does not exist
         if: failure()
         run: |
-          echo "ℹ️  gh-pages-preview branch doesn't exist yet or no preview to clean up"
-          echo "This is expected if no previews have been created yet"
+          echo "ℹ️ gh-pages-preview branch does not exist yet"
           exit 0
+
+      - name: Make script executable
+        run: chmod +x scripts/cleanup-preview.sh
+
+      - name: Cleanup PR preview
+        run: |
+          bash scripts/cleanup-preview.sh "${{ github.event.pull_request.number }}"
