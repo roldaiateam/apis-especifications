@@ -15,13 +15,3 @@ get:
         text/event-stream:
           schema:
             type: string
-    '400':
-      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
-    '401':
-      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
-    '403':
-      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
-    '409':
-      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
-    '500':
-      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
