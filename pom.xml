@@ -24,7 +24,7 @@
     <modules>
         <module>tenants/event</module>
         <module>tenants/rest</module>
-        <module>tenants/websocket</module>
+        <module>provisioning/rest</module>
     </modules>
 
     <build>

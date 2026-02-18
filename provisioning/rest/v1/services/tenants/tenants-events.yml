@@ -1,0 +1,27 @@
+get:
+  tags:
+    - Provisioning
+  summary: Subscribe to tenant provisioning events
+  description: >
+    Establishes a Server-Sent Events (SSE) stream that emits
+    real-time updates about the tenant provisioning process.
+  operationId: subscribeToTenantProvisioningEvents
+  parameters:
+    - $ref: '../../components/tenants/components.yml#/components/parameters/SubscribeToTenantProvisioningEventsRequestTenantId'
+  responses:
+    '200':
+      description: Event stream established
+      content:
+        text/event-stream:
+          schema:
+            $ref: '../../components/tenants/components.yml#/components/schemas/EventStream'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

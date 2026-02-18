@@ -1,0 +1,28 @@
+---
+api-spec-type: rest
+
+api:
+  name: Provisioning REST API
+  version: 0.0.1
+  description: >
+    This API provides endpoints that allow tenants to manage tenant information within the system.
+    It enables operations such as creating new tenants and managing tenant data.
+  maintainer:
+    name: Andrés Reinaldo Cid
+    email: andresrc345@gmail.com
+  basePath: /mic-inventory
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+  documentation:
+    url: ./README.md
+
+openapi:
+  spec-version: 3.0.3
+  spec-file: openapi-rest.yml
+  format: openapi
+
+codegen:
+  package-prefix: com.proactivedevs.contracts.provisioning.rest.v1
+  model-package: com.proactivedevs.contracts.provisioning.rest.v1.model
+
