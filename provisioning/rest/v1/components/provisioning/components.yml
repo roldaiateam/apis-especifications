@@ -8,95 +8,61 @@ components:
     EventStream:
       type: string
       example: |
-        event: TENANT_READY
-        data: {"tenantId": "string", "status": "string", "progress": 75, "message": "optional human readable message", "timestamp": "ISO-8601 string", "data": {}}
+        event: provisioning.update
+        data: {
+          "status": "IN_PROGRESS",
+          "progress": 40,
+          "currentStep": "INVENTORY_SCHEMA_CREATED",
+          "startedAt": "2026-02-18T10:12:03Z",
+          "completedAt": null,
+          "errorMessage": null,
+          "timestamp": "2026-02-18T10:12:05Z"
+        }
     TenantProvisioningStatus:
       type: object
       required:
-        - tenantId
         - status
         - progress
+        - currentStep
+        - startedAt
+        - completedAt
+        - errorMessage
       properties:
-        tenantId:
-          type: string
-          description: Unique identifier of the tenant
-          example: "abc123"
-
         status:
           type: string
-          description: Overall provisioning state
-          enum:
-            - PENDING
-            - IN_PROGRESS
-            - READY
-            - FAILED
-          example: "IN_PROGRESS"
-
-        progress:
-          type: integer
-          minimum: 0
-          maximum: 100
-          description: Percentage of completion
-          example: 70
-
-        currentStep:
-          type: string
-          description: Current provisioning step being executed
-          example: "INVENTORY_SCHEMA_CREATED"
-
-        steps:
-          type: array
-          description: Detailed step-by-step status
-          items:
-            $ref: '#/components/schemas/ProvisioningStep'
-
-        token:
-          type: string
-          description: JWT token generated once tenant is READY
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-
-        errorCode:
-          type: string
-          description: Machine-readable error code if provisioning failed
-          example: "INVENTORY_SCHEMA_ERROR"
-
-        message:
-          type: string
-          description: Human-readable message for debugging
-          example: "Failed to create schema in inventory service"
-
-        createdAt:
-          type: string
-          format: date-time
-          example: "2026-02-18T12:00:00Z"
-
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2026-02-18T12:01:15Z"
-    ProvisioningStep:
-      type: object
-      required:
-        - name
-        - status
-      properties:
-        name:
-          type: string
-          example: "INVENTORY_SCHEMA_CREATED"
-
-        status:
-          type: string
+          description: Overall status of the provisioning process
           enum:
             - PENDING
             - IN_PROGRESS
             - COMPLETED
             - FAILED
-          example: "COMPLETED"
-
-        timestamp:
+          example: "IN_PROGRESS"
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Completion percentage
+          example: 40
+        currentStep:
+          type: string
+          description: Name of the current provisioning step
+          example: "INVENTORY_SCHEMA_CREATED"
+        startedAt:
           type: string
           format: date-time
-          example: "2026-02-18T12:01:00Z"
+          description: Start date and time of the provisioning process
+          example: "2026-02-18T10:12:03Z"
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Completion date and time of the provisioning process, or null if not completed
+          example: "2026-02-18T10:12:05Z"
+        errorMessage:
+          type: string
+          nullable: true
+          description: Error message if the provisioning failed, or null otherwise
+          example: "Failed to create inventory schema"
   parameters:
     SubscribeToTenantProvisioningEventsRequestTenantId:
       name: tenantId
@@ -105,17 +71,10 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/TenantId'
-    SubscribeToTenantProvisioningEventsRequestLastEventId:
-      name: Last-Event-Id
-      in: header
-      description: Optional header to specify the last received event ID for resuming the event stream.
-      required: false
-      schema:
-          type: string
     GetTenantProvisioningStatusRequestTenantId:
       name: tenantId
       in: path
       description: Unique identifier of the tenant to retrieve provisioning status for.
       required: true
       schema:
-          $ref: '#/components/schemas/TenantId'
+        $ref: '#/components/schemas/TenantId'
