@@ -21,6 +21,18 @@ STABILITY="$2"
 VERSION_OVERRIDE="${3:-}"
 DEPLOY_FLAG="${4:-}"
 
+# Setup cleanup trap for temporary directories
+BUILD_DIR_ROOT="/tmp/apis-build-$$"
+cleanup_build_dir() {
+    if [ -d "$BUILD_DIR_ROOT" ]; then
+        echo ""
+        echo "🧹 Cleaning up temporary build directory..."
+        rm -rf "$BUILD_DIR_ROOT"
+        echo "✅ Cleanup completed: $BUILD_DIR_ROOT"
+    fi
+}
+trap cleanup_build_dir EXIT
+
 # Determine deployment flag
 SHOULD_DEPLOY=false
 if [ "$DEPLOY_FLAG" = "--deploy" ] || [ "$VERSION_OVERRIDE" = "--deploy" ]; then
@@ -103,8 +115,8 @@ if [ ! -f "$MVN_CONFIG" ]; then
     exit 1
 fi
 
-# Create temporary build directory
-BUILD_DIR="/tmp/apis-build-$$/$ARTIFACT_ID"
+# Create temporary build directory (cleanup handled by trap)
+BUILD_DIR="$BUILD_DIR_ROOT/$ARTIFACT_ID"
 mkdir -p "$BUILD_DIR"
 echo "Build directory: $BUILD_DIR"
 
