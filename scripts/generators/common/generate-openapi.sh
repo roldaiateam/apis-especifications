@@ -35,6 +35,11 @@ ABS_OUTPUT_DIR="$(realpath "$OUTPUT_DIR")"
 
 echo "Running OpenAPI code generation via Docker..."
 echo "Docker image: openapitools/openapi-generator-cli:v7.2.0"
+echo "DEBUG: REPO_ROOT=$REPO_ROOT"
+echo "DEBUG: ABS_MODULE_PATH=$ABS_MODULE_PATH"
+echo "DEBUG: ABS_OUTPUT_DIR=$ABS_OUTPUT_DIR"
+echo "DEBUG: Checking if spec file exists at: $ABS_MODULE_PATH/openapi-rest.yml"
+ls -la "$ABS_MODULE_PATH/openapi-rest.yml" || echo "ERROR: Spec file not found!"
 
 # Generate Java classes from OpenAPI spec
 docker run --rm \
