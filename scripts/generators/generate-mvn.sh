@@ -126,7 +126,8 @@ fi
 echo "Package name: $PACKAGE_NAME"
 
 # Create context YAML for template rendering
-cat > "$CONTEXT_FILE" <<EOF
+# First, create module-specific context
+cat > "$CONTEXT_FILE.partial" <<EOF
 module_path: $MODULE_PATH
 module_type: $MODULE_TYPE
 module_name: $MODULE_NAME
@@ -139,6 +140,15 @@ package_name: $PACKAGE_NAME
 spec_file: $SPEC_FILE
 repo_root: $REPO_ROOT
 EOF
+
+# Merge with Maven config using yq
+echo "Merging Maven configuration..."
+yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' \
+    "$MVN_CONFIG" \
+    "$CONTEXT_FILE.partial" > "$CONTEXT_FILE"
+
+# Cleanup partial file
+rm -f "$CONTEXT_FILE.partial"
 
 echo "Context file created: $CONTEXT_FILE"
 
