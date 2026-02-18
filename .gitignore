@@ -32,3 +32,5 @@ Thumbs.db
 
 # Docs - generated automatically in CI/CD
 docs/
+
+.m2-local

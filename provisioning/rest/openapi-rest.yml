@@ -2,7 +2,9 @@ openapi: 3.0.3
 
 info:
   title: Provisioning API
-  description:
+  description: >
+    This API provides endpoints that allow tenants to manage tenant information within the system.
+    It enables operations such as creating new tenants and managing tenant data.
   contact:
     name: Roldaia Team
     email: roldaiateam@gmail.com

@@ -5,12 +5,12 @@ api:
   name: Provisioning REST API
   version: 0.0.1
   description: >
-    This API provides endpoints that allow tenants to manage tenant information within the system.
-    It enables operations such as creating new tenants and managing tenant data.
+    This API provides endpoints to track tenant provisioning lifecycle in real time.
+    It includes an SSE stream for provisioning events and a polling fallback for current status.
   maintainer:
     name: Andrés Reinaldo Cid
     email: andresrc345@gmail.com
-  basePath: /mic-inventory
+  basePath: /micclients
   contact:
     name: Roldaia Team
     email: roldaiateam@gmail.com
@@ -25,4 +25,3 @@ openapi:
 codegen:
   package-prefix: com.proactivedevs.contracts.provisioning.rest.v1
   model-package: com.proactivedevs.contracts.provisioning.rest.v1.model
-

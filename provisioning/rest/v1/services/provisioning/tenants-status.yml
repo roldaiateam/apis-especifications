@@ -12,9 +12,9 @@ get:
     '200':
       description: Event stream established
       content:
-        text/event-stream:
+        application/json:
           schema:
-            $ref: '../../components/provisioning/components.yml#/components/schemas/GetTenantProvisioningStatusResponse'
+            $ref: '../../components/provisioning/components.yml#/components/schemas/TenantProvisioningStatus'
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':

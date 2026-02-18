@@ -10,8 +10,6 @@ components:
       example: |
         event: TENANT_READY
         data: {"tenantId": "string", "status": "string", "progress": 75, "message": "optional human readable message", "timestamp": "ISO-8601 string", "data": {}}
-    GetTenantProvisioningStatusResponse:
-      $ref: '#/components/schemas/TenantProvisioningStatus'
     TenantProvisioningStatus:
       type: object
       required:
