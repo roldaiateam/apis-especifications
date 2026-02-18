@@ -10,8 +10,175 @@ This repository manages API contracts for all microservices in the ProactiveDevs
 - Pre-compiled Avro classes included in artifacts (no plugin needed in consumers)
 - AsyncAPI version is the single source of truth
 - Automated version validation on Pull Requests
-- Automatic POM synchronization from AsyncAPI specs
+- Generator-based build system (no pom.xml in git)
 - PR comments with Maven dependencies after successful publication
+- Multi-generator architecture (Maven, npm, Go, Python)
+
+## 🏗️ Generator Architecture
+
+This repository uses a **generator-based build system** where code generators (Maven, npm, Go, Python) run exclusively in GitHub Actions workflows. **No build configuration files** (pom.xml, package.json, etc.) are stored in git.
+
+### Why Generators?
+
+**Before (Maven-coupled):**
+- ❌ POM files checked into git
+- ❌ Manual version synchronization with sed
+- ❌ Hard to support multiple languages
+- ❌ Build config mixed with contract specs
+
+**After (Generator-based):**
+- ✅ **Spec files** are the single source of truth
+- ✅ **Templates** generate build configs dynamically
+- ✅ **Docker** handles code generation (consistent across environments)
+- ✅ **Extensible** - easy to add new generators (npm, Go, Python)
+- ✅ **Clean repository** - only contract specs and templates
+
+### Available Generators
+
+| Generator | Status | Languages | Spec Types | Published To |
+|-----------|--------|-----------|------------|--------------|
+| Maven | ✅ **Enabled** | Java | AsyncAPI, OpenAPI | GitHub Packages |
+| npm | 🚧 Planned | TypeScript/JavaScript | AsyncAPI, OpenAPI | npm registry |
+| Go | 🚧 Planned | Go | AsyncAPI, OpenAPI | Go modules |
+| Python | 🚧 Planned | Python | AsyncAPI, OpenAPI | PyPI |
+
+### How It Works
+
+```
+┌─────────────────┐
+│  Spec Files     │  Single source of truth
+│  asyncapi.yml   │  - API definition
+│  openapi-rest   │  - Version
+└────────┬────────┘
+         │
+         │ Workflow detects changes
+         ▼
+┌─────────────────┐
+│  Generators     │  For each enabled generator:
+│  .github/       │  1. Extract version from spec
+│  generators/    │  2. Render build config from template
+│  ├── mvn/       │  3. Generate code with Docker
+│  ├── npm/       │  4. Build artifact
+│  └── registry   │  5. Publish to registry
+└────────┬────────┘
+         │
+         │ Publish artifacts
+         ▼
+┌─────────────────┐
+│  Registries     │
+│  - GitHub Pkgs  │  Consumers pull from registries
+│  - npm          │  (no changes needed)
+│  - Go modules   │
+│  - PyPI         │
+└─────────────────┘
+```
+
+### Developer Workflow
+
+#### For Contract Consumers (No Changes Required)
+
+**Maven consumers continue to use the same dependency coordinates:**
+
+```xml
+<dependency>
+    <groupId>com.proactivedevs.contracts</groupId>
+    <artifactId>tenants-event-stable</artifactId>
+    <version>1.0.3</version>
+</dependency>
+```
+
+**Zero breaking changes** - JAR structure, package names, and artifact coordinates remain identical.
+
+#### For Contract Maintainers
+
+**1. Edit Spec File**
+```bash
+# Update version in asyncapi.yml or openapi-rest.yml
+info:
+  version: 1.0.4  # Bump version
+```
+
+**2. Create PR**
+```bash
+git checkout -b feature/add-new-event
+git add tenants/event/asyncapi.yml
+git commit -m "feat: add TenantUpdated event"
+git push origin feature/add-new-event
+```
+
+**3. Generate Unstable Version (Optional)**
+
+Test your changes before merging by generating an unstable version:
+
+```bash
+# Generate with all enabled generators
+/generate-api --name "Tenants Events"
+
+# Generate with specific generator only
+/generate-api --name "Tenants Events" --type mvn
+/generate-api --name "Tenants REST API" --type npm  # Future
+```
+
+This publishes an unstable artifact with the format: `1.0.4-feature-add-new-event-SNAPSHOT`
+
+**4. Merge to Develop → SNAPSHOT Published**
+
+Merging to `develop` automatically publishes a SNAPSHOT version (e.g., `1.0.4-SNAPSHOT`).
+
+**5. Merge to Main → Stable Release Published**
+
+Merging to `main` publishes the stable version (e.g., `1.0.4`) and creates a git tag.
+
+### Generator Configuration
+
+Each module specifies which generators to use via `metadata.yml`:
+
+```yaml
+# tenants/event/metadata.yml
+generators:
+  mvn:
+    enabled: true
+    package_name: com.proactivedevs.contracts.tenants.v1
+  npm:
+    enabled: false  # Not yet implemented
+  go:
+    enabled: false
+  python:
+    enabled: false
+```
+
+### Generator Documentation
+
+- **Maven Generator**: [.github/generators/mvn/README.md](.github/generators/mvn/README.md)
+  - Docker-based code generation (Avro, OpenAPI)
+  - Template-driven POM files (Jinja2)
+  - Ephemeral build directories
+- **Generator Registry**: [.github/generators/registry.yml](.github/generators/registry.yml)
+  - Central catalog of all generators
+  - Tool versions and Docker images
+
+### Adding Future Generators
+
+To add npm, Go, or Python support:
+
+1. Create generator config: `.github/generators/npm/config.yml`
+2. Create templates: `package.json.j2`, `tsconfig.json.j2`
+3. Create generation script: `scripts/generators/generate-npm.sh`
+4. Enable in registry: `.github/generators/registry.yml`
+5. Enable per module: `tenants/event/metadata.yml`
+
+**Example - npm generator (future):**
+
+```typescript
+// Consumer usage (TypeScript)
+import { TenantCreatedEvent } from '@proactivedevs/contracts-tenants-event';
+
+const event: TenantCreatedEvent = {
+  eventId: 'uuid',
+  eventType: 'tenant.created',
+  payload: { /* ... */ }
+};
+```
 
 ## Structure
 
