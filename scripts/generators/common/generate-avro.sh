@@ -27,9 +27,9 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 # Get absolute paths for Docker volume mounting
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ABS_MODULE_PATH="$REPO_ROOT/$MODULE_PATH"
-ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
+ABS_OUTPUT_DIR="$(realpath "$OUTPUT_DIR")"
 
 echo "Running Avro code generation via Docker..."
 echo "Docker image: apache/avro-tools:1.11.3"
