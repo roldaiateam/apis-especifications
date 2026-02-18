@@ -9,6 +9,6 @@ apis:
   - name: "Tenants REST API"
     api-spec-type: rest
     definition-path: tenants/rest
-  - name: "Providers REST API"
+  - name: "Provisioning REST API"
     api-spec-type: rest
     definition-path: provisioning/rest
