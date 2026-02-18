@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>{{ maven.group_id }}</groupId>
+    <artifactId>{{ artifact_id }}</artifactId>
+    <version>{{ version }}</version>
+    <packaging>{{ module_defaults.event.packaging }}</packaging>
+
+    <name>{{ module_name }}</name>
+    <description>{{ module_defaults.event.description }}</description>
+
+    <properties>
+        <java.version>{{ maven.java_version }}</java.version>
+        <maven.compiler.source>{{ maven.java_version }}</maven.compiler.source>
+        <maven.compiler.target>{{ maven.java_version }}</maven.compiler.target>
+        <project.build.sourceEncoding>{{ maven.encoding }}</project.build.sourceEncoding>
+        <avro.version>{{ maven.dependencies.avro }}</avro.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>${avro.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    {%- for include in module_defaults.event.resources.includes %}
+                    <include>{{ include }}</include>
+                    {%- endfor %}
+                </includes>
+                <targetPath>{{ module_defaults.event.spec_directory }}</targetPath>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>{{ maven.plugins.maven_resources }}</version>
+                <configuration>
+                    <encoding>{{ maven.encoding }}</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro-maven-plugin</artifactId>
+                <version>${avro.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-avro-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>schema</goal>
+                        </goals>
+                        <configuration>
+                            <sourceDirectory>${project.basedir}/{{ module_defaults.event.avro.source_directory }}</sourceDirectory>
+                            <imports>
+                                <import>${project.basedir}/{{ module_defaults.event.avro.source_directory }}/imports/tenant-created.avsc</import>
+                            </imports>
+                            <excludes>
+                                <exclude>**/imports/**</exclude>
+                            </excludes>
+                            <outputDirectory>${project.build.directory}/{{ module_defaults.event.avro.output_directory }}</outputDirectory>
+                            <stringType>{{ module_defaults.event.avro.string_type }}</stringType>
+                            <enableDecimalLogicalType>{{ module_defaults.event.avro.enable_decimal_logical_type|lower }}</enableDecimalLogicalType>
+                            <createSetters>{{ module_defaults.event.avro.create_setters|lower }}</createSetters>
+                            <fieldVisibility>{{ module_defaults.event.avro.field_visibility }}</fieldVisibility>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>{{ maven.plugins.build_helper_maven_plugin }}</version>
+                <executions>
+                    <execution>
+                        <id>add-avro-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/{{ module_defaults.event.avro.output_directory }}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>{{ distribution.repository.id }}</id>
+            <name>{{ distribution.repository.name }}</name>
+            <url>{{ distribution.repository.url }}</url>
+        </repository>
+        <snapshotRepository>
+            <id>{{ distribution.snapshot_repository.id }}</id>
+            <name>{{ distribution.snapshot_repository.name }}</name>
+            <url>{{ distribution.snapshot_repository.url }}</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+</project>
