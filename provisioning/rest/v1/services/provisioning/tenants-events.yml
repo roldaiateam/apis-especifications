@@ -14,7 +14,7 @@ get:
       content:
         text/event-stream:
           schema:
-            $ref: '../../components/provisioning/components.yml#/components/schemas/EventStream'
+            type: string
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':
