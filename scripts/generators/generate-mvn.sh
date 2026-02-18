@@ -203,19 +203,24 @@ fi
 
 # Create source directories for Maven
 echo "Creating Maven source directories..."
-mkdir -p "$BUILD_DIR/src/main/java"
 mkdir -p "$BUILD_DIR/src/main/resources"
 
-# Copy generated sources to src/main/java
-if [ -d "$OUTPUT_DIR" ]; then
-    echo "Copying generated sources to Maven structure..."
-    find "$OUTPUT_DIR" -name "*.java" -type f -exec cp --parents {} "$BUILD_DIR/src/main/java/" \; 2>/dev/null || \
-    find "$OUTPUT_DIR" -name "*.java" -type f | while read -r file; do
-        rel_path=$(echo "$file" | sed "s|$OUTPUT_DIR/||")
-        target_file="$BUILD_DIR/src/main/java/$rel_path"
-        mkdir -p "$(dirname "$target_file")"
-        cp "$file" "$target_file"
-    done
+# For Avro/Event modules, copy generated sources to src/main/java
+# (Avro outputs files directly, not in src/main/java structure)
+# For REST modules, skip copying - OpenAPI generator already creates src/main/java structure
+# and build-helper-maven-plugin will add it to the compile classpath
+if [ "$MODULE_TYPE" = "event" ] || [ "$MODULE_TYPE" = "websocket" ]; then
+    mkdir -p "$BUILD_DIR/src/main/java"
+    if [ -d "$OUTPUT_DIR" ]; then
+        echo "Copying Avro generated sources to Maven structure..."
+        find "$OUTPUT_DIR" -name "*.java" -type f -exec cp --parents {} "$BUILD_DIR/src/main/java/" \; 2>/dev/null || \
+        find "$OUTPUT_DIR" -name "*.java" -type f | while read -r file; do
+            rel_path=$(echo "$file" | sed "s|$OUTPUT_DIR/||")
+            target_file="$BUILD_DIR/src/main/java/$rel_path"
+            mkdir -p "$(dirname "$target_file")"
+            cp "$file" "$target_file"
+        done
+    fi
 fi
 
 # Copy spec files and resources to src/main/resources
