@@ -48,4 +48,9 @@ docker run --rm \
 
 echo "Avro code generation completed successfully"
 echo "Generated files in: $OUTPUT_DIR"
+
+# Fix file permissions (Docker runs as root, need to chown to current user)
+echo "Fixing file permissions..."
+sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR" || true
+
 ls -la "$OUTPUT_DIR" || true

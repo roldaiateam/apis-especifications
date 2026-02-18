@@ -56,4 +56,9 @@ docker run --rm \
 
 echo "OpenAPI code generation completed successfully"
 echo "Generated files in: $OUTPUT_DIR"
+
+# Fix file permissions (Docker runs as root, need to chown to current user)
+echo "Fixing file permissions..."
+sudo chown -R $(id -u):$(id -g) "$OUTPUT_DIR" || true
+
 find "$OUTPUT_DIR" -type f -name "*.java" | head -10 || true
