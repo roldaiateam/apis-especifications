@@ -29,3 +29,16 @@ codegen:
   package-prefix: com.proactivedevs.contracts.tenants.rest.v1
   model-package: com.proactivedevs.contracts.tenants.rest.v1.model
 
+# Generator configurations
+generators:
+  mvn:
+    enabled: true
+    package_name: com.proactivedevs.contracts.tenants.rest.v1
+    artifact_id_override: null  # Use default naming
+  npm:
+    enabled: false  # Future implementation
+    package_name: "@proactivedevs/contracts-tenants-rest"
+  go:
+    enabled: false  # Future implementation
+  python:
+    enabled: false  # Future implementation

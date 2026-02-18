@@ -43,3 +43,16 @@ events:
     description: Published when a new tenant is created
     schema: tenant-created-envelope.avsc
 
+# Generator configurations
+generators:
+  mvn:
+    enabled: true
+    package_name: com.proactivedevs.contracts.tenants.v1
+    artifact_id_override: null  # Use default naming
+  npm:
+    enabled: false  # Future implementation
+    package_name: "@proactivedevs/contracts-tenants-event"
+  go:
+    enabled: false  # Future implementation
+  python:
+    enabled: false  # Future implementation

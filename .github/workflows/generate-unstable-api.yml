@@ -75,17 +75,14 @@ jobs:
           echo "api_name=$API_NAME" >> $GITHUB_OUTPUT
           echo "📋 API Name: $API_NAME"
           
-          # Extract --packaging argument
-          PACKAGING=$(echo "$COMMENT_BODY" | grep -oP '(?<=--packaging\s)\w+' || echo "mvn")
-          echo "packaging=$PACKAGING" >> $GITHUB_OUTPUT
-          echo "📦 Packaging: $PACKAGING"
-          
-          # Validate packaging
-          if [ "$PACKAGING" != "mvn" ]; then
-            echo "❌ Unsupported packaging: $PACKAGING (only 'mvn' is supported)"
-            echo "error=unsupported-packaging" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+          # Extract --type argument (generator type: mvn, npm, go, python)
+          # Default to "all" if not specified
+          GENERATOR_TYPE=$(echo "$COMMENT_BODY" | grep -oP '(?<=--type\s)\w+' || echo "all")
+          echo "generator_type=$GENERATOR_TYPE" >> $GITHUB_OUTPUT
+          echo "🔧 Generator type: $GENERATOR_TYPE"
+
+          # Note: Validation of generator type will be done later after checkout
+          # when we can access .github/generators/registry.yml
 
       - name: Get PR details
         id: pr-details
@@ -112,11 +109,23 @@ jobs:
           ref: ${{ steps.pr-details.outputs.head_sha }}
           fetch-depth: 0
 
-      - name: Install yq
+      - name: Install dependencies
         run: |
+          echo "=================================================="
+          echo "INSTALLING DEPENDENCIES"
+          echo "=================================================="
+
+          # Install yq for YAML parsing
+          echo "Installing yq..."
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
           yq --version
+
+          # Install Python dependencies for template rendering
+          echo "Installing Python dependencies..."
+          pip install pyyaml jinja2
+
+          echo "✅ All dependencies installed successfully"
 
       - name: Find module by API name
         id: find-module
@@ -147,6 +156,34 @@ jobs:
           
           echo "✅ Found module path: $MODULE_PATH"
           echo "module_path=$MODULE_PATH" >> $GITHUB_OUTPUT
+
+      - name: Validate generator type
+        id: validate-generator
+        env:
+          GENERATOR_TYPE: ${{ steps.parse-args.outputs.generator_type }}
+        run: |
+          echo "=================================================="
+          echo "VALIDATING GENERATOR TYPE"
+          echo "=================================================="
+
+          echo "Requested generator type: $GENERATOR_TYPE"
+
+          if [ "$GENERATOR_TYPE" != "all" ]; then
+            # Check if generator exists and is enabled in registry
+            GENERATOR_EXISTS=$(yq eval ".generators.$GENERATOR_TYPE.enabled // false" .github/generators/registry.yml)
+
+            if [ "$GENERATOR_EXISTS" != "true" ]; then
+              echo "❌ Generator '$GENERATOR_TYPE' not found or not enabled in registry"
+              echo "Available generators:"
+              yq eval '.generators | to_entries | map(select(.value.enabled == true)) | .[].key' .github/generators/registry.yml
+              echo "error=invalid-generator" >> $GITHUB_OUTPUT
+              exit 1
+            fi
+
+            echo "✅ Generator '$GENERATOR_TYPE' is valid and enabled"
+          else
+            echo "✅ Will use all enabled generators for this module"
+          fi
 
       - name: Extract API version and metadata
         id: extract-version
@@ -232,40 +269,6 @@ jobs:
           echo "stable_artifact_id=$STABLE_ARTIFACT_ID" >> $GITHUB_OUTPUT
           echo "unstable_artifact_id=$UNSTABLE_ARTIFACT_ID" >> $GITHUB_OUTPUT
 
-      - name: Modify POM temporarily
-        env:
-          MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
-          STABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.stable_artifact_id }}
-          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
-          UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
-        run: |
-          echo "=================================================="
-          echo "MODIFYING POM TEMPORARILY"
-          echo "=================================================="
-          
-          POM_FILE="$MODULE_PATH/pom.xml"
-          
-          if [ ! -f "$POM_FILE" ]; then
-            echo "❌ POM file not found: $POM_FILE"
-            exit 1
-          fi
-          
-          echo "Original POM excerpt:"
-          grep -A 2 '<artifactId>' "$POM_FILE" | head -n 6
-          
-          # Replace artifactId: stable → unstable
-          sed -i.bak "s|<artifactId>$STABLE_ARTIFACT_ID</artifactId>|<artifactId>$UNSTABLE_ARTIFACT_ID</artifactId>|g" "$POM_FILE"
-          
-          # Replace version
-          sed -i.bak "/<artifactId>$UNSTABLE_ARTIFACT_ID<\/artifactId>/,/<version>/ s|<version>[^<]*</version>|<version>$UNSTABLE_VERSION</version>|" "$POM_FILE"
-          
-          rm -f "$POM_FILE.bak"
-          
-          echo "Modified POM excerpt:"
-          grep -A 2 '<artifactId>' "$POM_FILE" | head -n 6
-          
-          echo "✅ POM modified successfully"
-
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -276,27 +279,82 @@ jobs:
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
 
-      - name: Build unstable artifact
-        env:
-          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
-        run: |
-          echo "=================================================="
-          echo "BUILDING UNSTABLE ARTIFACT"
-          echo "=================================================="
-          
-          mvn clean verify -pl ":$UNSTABLE_ARTIFACT_ID"
-
-      - name: Deploy unstable artifact
+      - name: Generate and deploy unstable with generators
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
+          MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
+          GENERATOR_TYPE: ${{ steps.parse-args.outputs.generator_type }}
+          UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
+          BRANCH_NAME: ${{ steps.pr-details.outputs.head_ref }}
         run: |
+          set -e
+
           echo "=================================================="
-          echo "DEPLOYING UNSTABLE ARTIFACT TO GITHUB PACKAGES"
+          echo "GENERATING UNSTABLE API WITH GENERATORS"
           echo "=================================================="
-          
-          mvn deploy -pl ":$UNSTABLE_ARTIFACT_ID" -DskipTests
+          echo "Module: $MODULE_PATH"
+          echo "Generator type: $GENERATOR_TYPE"
+          echo "Unstable version: $UNSTABLE_VERSION"
+          echo "Branch: $BRANCH_NAME"
+          echo "=================================================="
+
+          # Extract module metadata
+          METADATA_FILE="$MODULE_PATH/metadata.yml"
+
+          # Determine which generators to use
+          if [ "$GENERATOR_TYPE" = "all" ]; then
+            # Get all enabled generators for this module
+            echo "🔍 Finding all enabled generators for this module..."
+            GENERATORS=$(yq eval '.generators | to_entries | map(select(.value.enabled == true)) | .[].key' "$METADATA_FILE")
+
+            if [ -z "$GENERATORS" ]; then
+              echo "❌ No generators enabled for this module"
+              exit 1
+            fi
+          else
+            # Check if specific generator is enabled for this module
+            echo "🔍 Checking if $GENERATOR_TYPE generator is enabled for this module..."
+            IS_ENABLED=$(yq eval ".generators.$GENERATOR_TYPE.enabled // false" "$METADATA_FILE")
+
+            if [ "$IS_ENABLED" != "true" ]; then
+              echo "❌ Generator '$GENERATOR_TYPE' is not enabled for this module"
+              echo "Available generators for this module:"
+              yq eval '.generators | to_entries | map(select(.value.enabled == true)) | .[].key' "$METADATA_FILE"
+              exit 1
+            fi
+
+            GENERATORS="$GENERATOR_TYPE"
+          fi
+
+          echo ""
+          echo "📋 Generators to use: $GENERATORS"
+          echo ""
+
+          # Store generators list for later use in success comment
+          echo "$GENERATORS" > /tmp/generators_used.txt
+
+          # Generate and deploy with each generator
+          for GEN in $GENERATORS; do
+            echo "=================================================="
+            echo "🚀 Generating with $GEN generator"
+            echo "=================================================="
+
+            # Call generator script with unstable stability and version override
+            bash scripts/generators/generate-${GEN}.sh \
+              "$MODULE_PATH" \
+              "unstable" \
+              "$UNSTABLE_VERSION" \
+              --deploy
+
+            echo ""
+            echo "✅ Generated and deployed with $GEN generator"
+            echo ""
+          done
+
+          echo "=================================================="
+          echo "✅ All generators completed successfully"
+          echo "=================================================="
 
       - name: Post success comment
         if: success()
@@ -306,24 +364,42 @@ jobs:
           UNSTABLE_ARTIFACT_ID: ${{ steps.compute-unstable.outputs.unstable_artifact_id }}
           UNSTABLE_VERSION: ${{ steps.compute-unstable.outputs.unstable_version }}
           SPEC_TYPE: ${{ steps.extract-version.outputs.spec_type }}
+          GENERATOR_TYPE: ${{ steps.parse-args.outputs.generator_type }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
             const apiName = process.env.API_NAME;
             const artifactId = process.env.UNSTABLE_ARTIFACT_ID;
             const version = process.env.UNSTABLE_VERSION;
             const specType = process.env.SPEC_TYPE;
-            
+            const generatorType = process.env.GENERATOR_TYPE;
+
+            // Read generators used from temp file
+            let generatorsUsed = '';
+            try {
+              generatorsUsed = fs.readFileSync('/tmp/generators_used.txt', 'utf8').trim().replace(/\n/g, ', ');
+            } catch (error) {
+              generatorsUsed = generatorType === 'all' ? 'all enabled' : generatorType;
+            }
+
             const typeLabel = (specType === 'event' || specType === 'websocket') ? 'AsyncAPI' : 'OpenAPI';
             const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            
-            const comment = `## ✅ Versión Unstable Generada Exitosamente
-            
+
+            let comment = `## ✅ Versión Unstable Generada Exitosamente
+
             ### ${apiName} (${typeLabel})
             **Version:** \`${version}\`
-            
+            **Generadores utilizados:** ${generatorsUsed}
+
+            `;
+
+            // Add Maven dependency example if mvn generator was used
+            if (generatorsUsed.includes('mvn') || generatorType === 'all') {
+              comment += `#### Maven
+
             Para consumir esta versión unstable en tu proyecto Maven, agrega la siguiente dependencia:
-            
+
             \`\`\`xml
             <dependency>
                 <groupId>com.proactivedevs.contracts</groupId>
@@ -331,15 +407,18 @@ jobs:
                 <version>${version}</version>
             </dependency>
             \`\`\`
-            
-            ---
-            
+
+            `;
+            }
+
+            comment += `---
+
             ⚠️ **Nota:** Esta es una versión **inestable** generada desde este PR. Será automáticamente eliminada cuando el PR sea mergeado.
-            
+
             📦 **Ubicación:** [GitHub Packages](https://github.com/${context.repo.owner}/${context.repo.repo}/packages)
             🔗 **Logs del workflow:** [Ver ejecución](${runUrl})
             `;
-            
+
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,

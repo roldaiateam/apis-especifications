@@ -1,0 +1,111 @@
+# Maven Generator Configuration
+# This file defines the Maven-specific configuration for generating JARs from API specifications
+
+maven:
+  group_id: com.proactivedevs.contracts
+  java_version: 21
+  encoding: UTF-8
+
+  # Maven plugin versions
+  plugins:
+    maven_compiler: 3.11.0
+    maven_resources: 3.3.1
+    avro_maven_plugin: 1.11.3
+    openapi_generator_maven_plugin: 7.2.0
+    build_helper_maven_plugin: 3.5.0
+
+  # Dependency versions
+  dependencies:
+    # Avro dependencies (for event/websocket modules)
+    avro: 1.11.3
+
+    # OpenAPI/REST dependencies
+    swagger_annotations: 2.2.20
+    jackson_databind_nullable: 0.2.6
+    jakarta_annotation_api: 2.1.1
+    jakarta_validation_api: 3.0.2
+    lombok: 1.18.30
+
+# Artifact naming strategy
+artifact_naming:
+  stable: "{module_name}-stable"
+  unstable: "{module_name}-unstable"
+
+# Version strategy by branch
+version_strategy:
+  main: "{api_version}"
+  develop: "{api_version}-SNAPSHOT"
+  feature: "{api_version}-{branch_name}-SNAPSHOT"
+
+# Distribution management
+distribution:
+  repository:
+    id: github
+    name: GitHub Packages
+    url: https://maven.pkg.github.com/roldaiateam/apis-especifications
+  snapshot_repository:
+    id: github
+    name: GitHub Packages
+    url: https://maven.pkg.github.com/roldaiateam/apis-especifications
+
+# Module-specific defaults
+module_defaults:
+  event:
+    packaging: jar
+    description: AsyncAPI contract for Events (RabbitMQ + Avro)
+    spec_file: asyncapi.yml
+    spec_directory: META-INF/asyncapi
+    avro:
+      source_directory: tenants-avro/v1
+      output_directory: generated-sources/avro
+      string_type: String
+      enable_decimal_logical_type: true
+      create_setters: true
+      field_visibility: private
+    resources:
+      includes:
+        - asyncapi.yml
+        - metadata.yml
+        - tenants-avro/**/*.avsc
+
+  websocket:
+    packaging: jar
+    description: AsyncAPI contract for WebSocket (Avro)
+    spec_file: asyncapi.yml
+    spec_directory: META-INF/asyncapi
+    avro:
+      source_directory: tenants-avro/v1
+      output_directory: generated-sources/avro
+      string_type: String
+      enable_decimal_logical_type: true
+      create_setters: true
+      field_visibility: private
+    resources:
+      includes:
+        - asyncapi.yml
+        - metadata.yml
+        - tenants-avro/**/*.avsc
+
+  rest:
+    packaging: jar
+    description: OpenAPI contract for REST API
+    spec_file: openapi-rest.yml
+    spec_directory: META-INF/openapi
+    openapi:
+      input_spec: openapi-rest.yml
+      generator_name: spring
+      output_directory: generated-sources/openapi
+      generate_apis: false
+      generate_models: true
+      generate_supporting_files: false
+      config_options:
+        useSpringBoot3: true
+        serializableModel: true
+        useJakartaEe: true
+        useLombok: true
+        openApiNullable: false
+    resources:
+      includes:
+        - openapi-rest.yml
+        - metadata.yml
+        - v1/**/*.yml
