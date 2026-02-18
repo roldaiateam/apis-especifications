@@ -274,7 +274,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'maven'
+          # cache removed: POMs no longer exist in repo after Maven decoupling
           server-id: github
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN

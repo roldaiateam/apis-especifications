@@ -1,0 +1,46 @@
+openapi: 3.0.3
+
+info:
+  title: Provisioning API
+  description: >
+    This API provides endpoints that allow tenants to manage tenant information within the system.
+    It enables operations such as creating new tenants and managing tenant data.
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+    url: 'http://roldaiateam.com'
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:8080/micclients
+    description: Localhost
+  - url: https://proactivedevs-template-des/micclients
+    description: DES
+  - url: https://proactivedevs-template-pre/micclients
+    description: PRE
+  - url: https://proactivedevs-template-prod/micclients
+    description: PRO
+
+tags:
+  - name: Provisioning
+    description: Operations about Provisioning
+
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+paths:
+  /v1/tenants/{tenantId}/events:
+    $ref: './v1/services/provisioning/tenants-events.yml'
+  /v1/tenants/{tenantId}/status:
+    $ref: './v1/services/provisioning/tenants-status.yml'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
