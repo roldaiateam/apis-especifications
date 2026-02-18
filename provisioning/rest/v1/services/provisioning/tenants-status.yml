@@ -1,20 +1,20 @@
 get:
   tags:
     - Provisioning
-  summary: Subscribe to tenant provisioning events
-  description: >
-    Establishes a Server-Sent Events (SSE) stream that emits
-    real-time updates about the tenant provisioning process.
-  operationId: subscribeToTenantProvisioningEvents
+  summary: Get tenant provisioning status events
+  description: |
+    Returns the current state of the tenant provisioning process.
+    This endpoint acts as a fallback mechanism if the SSE stream is unavailable.
+  operationId: getTenantProvisioningStatus
   parameters:
-    - $ref: '../../components/tenants/components.yml#/components/parameters/SubscribeToTenantProvisioningEventsRequestTenantId'
+    - $ref: '../../components/provisioning/components.yml#/components/parameters/GetTenantProvisioningStatusRequestTenantId'
   responses:
     '200':
       description: Event stream established
       content:
         text/event-stream:
           schema:
-            $ref: '../../components/tenants/components.yml#/components/schemas/EventStream'
+            $ref: '../../components/provisioning/components.yml#/components/schemas/GetTenantProvisioningStatusResponse'
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':

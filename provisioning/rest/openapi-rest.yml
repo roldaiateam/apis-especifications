@@ -29,9 +29,9 @@ security:
 
 paths:
   /v1/tenants/{tenantId}/events:
-    $ref: './v1/services/tenants/tenants-events.yml'
+    $ref: './v1/services/provisioning/tenants-events.yml'
   /v1/tenants/{tenantId}/status:
-    $ref: './v1/services/tenants/tenants-status.yml'
+    $ref: './v1/services/provisioning/tenants-status.yml'
 
 components:
   securitySchemes:
