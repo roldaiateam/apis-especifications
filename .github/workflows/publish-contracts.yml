@@ -185,177 +185,218 @@ jobs:
             echo "✅ All validations passed"
           fi
 
-      - name: Sync POM versions from API specs (per module)
+      - name: Install dependencies
         if: steps.detect-changes.outputs.has_changes == 'true'
-        env:
-          MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
-           set -e
-           
-           echo "=================================================="
-           echo "SYNCING POM VERSIONS FROM API SPECS (PER MODULE)"
-           echo "=================================================="
-           
-           # Split modules by comma
-           IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
-           
-           # Clear the temporary file for storing module info
-           > /tmp/module_versions.txt
-           
-           for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
-             echo ""
-             echo "Processing module: $MODULE_PATH"
-             
-             METADATA_FILE="$MODULE_PATH/metadata.yml"
-             if [ ! -f "$METADATA_FILE" ]; then
-               echo "⚠️  No metadata.yml found, skipping"
-               continue
-             fi
-             
-             # Extract API spec type
-             API_SPEC_TYPE=$(grep '^api-spec-type:' "$METADATA_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
-             echo "📋 API spec type: $API_SPEC_TYPE"
-             
-             # Determine spec file based on type
-             if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
-               SPEC_FILE="$MODULE_PATH/asyncapi.yml"
-             elif [ "$API_SPEC_TYPE" = "rest" ]; then
-               SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
-             else
-               echo "⚠️  Unknown api-spec-type, skipping"
-               continue
-             fi
-             
-             if [ ! -f "$SPEC_FILE" ]; then
-               echo "⚠️  Spec file not found: $SPEC_FILE, skipping"
-               continue
-             fi
-             
-             # Extract API version from spec file
-             API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
-             
-             if [ -z "$API_VERSION" ]; then
-               echo "❌ Could not extract API version from $SPEC_FILE"
-               exit 1
-             fi
-             
-             echo "📋 API version from spec: $API_VERSION"
-             
-             # Extract API name from metadata.yml (for later use in PR comment)
-             API_NAME=$(grep -A 1 '^api:' "$METADATA_FILE" | grep 'name:' | sed 's/.*name:[[:space:]]*//' | tr -d '"' | tr -d "'")
-             echo "📋 API name: $API_NAME"
-             
-             # Determine target Maven version based on branch
-             if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-               MAVEN_VERSION="$API_VERSION"
-               echo "🎯 Target branch: main → Maven version: $MAVEN_VERSION (stable)"
-             else
-               MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
-               echo "🎯 Target branch: develop → Maven version: $MAVEN_VERSION (snapshot)"
-             fi
-             
-             # Calculate artifact ID
-             MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-             ARTIFACT_ID="${MODULE_NAME}-stable"
-             echo "📦 Artifact ID: $ARTIFACT_ID"
-             
-              # Update ONLY this module's POM version directly with sed
-              POM_FILE="$MODULE_PATH/pom.xml"
-              echo "🔄 Updating $POM_FILE version to $MAVEN_VERSION"
-              
-              # Use sed to replace the version line that comes after <artifactId>
-              # This pattern looks for <artifactId>...<version>X.Y.Z</version>
-              sed -i.bak "/<artifactId>$ARTIFACT_ID<\/artifactId>/,/<version>/ s|<version>[^<]*</version>|<version>$MAVEN_VERSION</version>|" "$POM_FILE"
-              rm -f "$POM_FILE.bak"
-              
-              echo "✅ Updated version in $POM_FILE"
-             
-             # Store module info for PR comment (append to temp file)
-             echo "${MODULE_PATH}|${API_NAME}|${ARTIFACT_ID}|${MAVEN_VERSION}" >> /tmp/module_versions.txt
-             
-             echo "✅ $ARTIFACT_ID synchronized to $MAVEN_VERSION"
-           done
-           
-           # Sort the module info file alphabetically by module path
-           echo "📝 Sorting module info for PR comment generation..."
-           sort -o /tmp/module_versions.txt /tmp/module_versions.txt
-           
-           echo ""
-           echo "✅ All POM versions synchronized successfully"
+          echo "=================================================="
+          echo "INSTALLING DEPENDENCIES"
+          echo "=================================================="
 
-      - name: Build and test
+          # Install yq for YAML parsing
+          echo "Installing yq..."
+          sudo wget -q https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+          yq --version
+
+          # Install Python dependencies for template rendering
+          echo "Installing Python dependencies..."
+          pip install pyyaml jinja2
+
+          echo "✅ All dependencies installed successfully"
+
+      - name: Build with generators
         if: steps.detect-changes.outputs.has_changes == 'true'
         env:
           MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
-          # Build only changed modules
+          set -e
+
+          echo "=================================================="
+          echo "BUILDING WITH GENERATORS"
+          echo "=================================================="
+
           IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
-          MODULE_LIST=""
-          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
-            if [ -f "$MODULE_PATH/pom.xml" ]; then
-              MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-              ARTIFACT_ID="${MODULE_NAME}-stable"
-              if [ -z "$MODULE_LIST" ]; then
-                MODULE_LIST=":$ARTIFACT_ID"
-              else
-                MODULE_LIST="$MODULE_LIST,:$ARTIFACT_ID"
-              fi
-            fi
-          done
-          
-          if [ -n "$MODULE_LIST" ]; then
-            echo "Building modules: $MODULE_LIST"
-            mvn clean verify -pl "$MODULE_LIST"
-          else
-            echo "No valid modules to build"
-            exit 1
-          fi
 
-      - name: Deploy to GitHub Packages
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            echo ""
+            echo "=================================================="
+            echo "Building module: $MODULE_PATH"
+            echo "=================================================="
+
+            # Check if module has metadata.yml
+            if [ ! -f "$MODULE_PATH/metadata.yml" ]; then
+              echo "⚠️  No metadata.yml found, skipping"
+              continue
+            fi
+
+            # Check if Maven generator is enabled for this module
+            MVN_ENABLED=$(yq eval '.generators.mvn.enabled // false' "$MODULE_PATH/metadata.yml")
+            if [ "$MVN_ENABLED" != "true" ]; then
+              echo "⚠️  Maven generator not enabled, skipping"
+              continue
+            fi
+
+            # Determine stability based on branch (always use "stable" artifact ID)
+            STABILITY="stable"
+            echo "📦 Stability: $STABILITY"
+
+            # Build with generator (no deploy flag yet)
+            echo "🔨 Building with Maven generator..."
+            bash scripts/generators/generate-mvn.sh "$MODULE_PATH" "$STABILITY"
+
+            echo "✅ Build completed for $MODULE_PATH"
+          done
+
+          echo ""
+          echo "✅ All modules built successfully"
+
+      - name: Deploy with generators
         if: steps.detect-changes.outputs.has_changes == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
-          # Deploy only changed modules
+          set -e
+
+          echo "=================================================="
+          echo "DEPLOYING WITH GENERATORS"
+          echo "=================================================="
+
           IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
-          MODULE_LIST=""
+
           for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
-            if [ -f "$MODULE_PATH/pom.xml" ]; then
-              MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
-              ARTIFACT_ID="${MODULE_NAME}-stable"
-              if [ -z "$MODULE_LIST" ]; then
-                MODULE_LIST=":$ARTIFACT_ID"
-              else
-                MODULE_LIST="$MODULE_LIST,:$ARTIFACT_ID"
-              fi
+            echo ""
+            echo "=================================================="
+            echo "Deploying module: $MODULE_PATH"
+            echo "=================================================="
+
+            # Check if module has metadata.yml
+            if [ ! -f "$MODULE_PATH/metadata.yml" ]; then
+              echo "⚠️  No metadata.yml found, skipping"
+              continue
             fi
+
+            # Check if Maven generator is enabled for this module
+            MVN_ENABLED=$(yq eval '.generators.mvn.enabled // false' "$MODULE_PATH/metadata.yml")
+            if [ "$MVN_ENABLED" != "true" ]; then
+              echo "⚠️  Maven generator not enabled, skipping"
+              continue
+            fi
+
+            # Determine stability based on branch
+            STABILITY="stable"
+            echo "📦 Stability: $STABILITY"
+
+            # Deploy with generator (--deploy flag)
+            echo "🚀 Deploying with Maven generator..."
+            bash scripts/generators/generate-mvn.sh "$MODULE_PATH" "$STABILITY" "" --deploy
+
+            echo "✅ Deployment completed for $MODULE_PATH"
           done
-          
-          if [ -n "$MODULE_LIST" ]; then
-            echo "Deploying modules: $MODULE_LIST"
-            mvn deploy -pl "$MODULE_LIST" -DskipTests
-          else
-            echo "No valid modules to deploy"
-            exit 1
-          fi
+
+          echo ""
+          echo "✅ All modules deployed successfully"
 
       - name: Generate dependency info
         if: steps.detect-changes.outputs.has_changes == 'true'
         id: dependency-info
+        env:
+          MODULES: ${{ steps.detect-changes.outputs.modules }}
         run: |
+          set -e
+
+          echo "=================================================="
+          echo "GENERATING DEPENDENCY INFO"
+          echo "=================================================="
+
+          # Clear the temporary file for storing module info
+          > /tmp/module_versions.txt
+
+          IFS=',' read -ra MODULE_ARRAY <<< "$MODULES"
+
+          for MODULE_PATH in "${MODULE_ARRAY[@]}"; do
+            echo ""
+            echo "Processing module: $MODULE_PATH"
+
+            if [ ! -f "$MODULE_PATH/metadata.yml" ]; then
+              echo "⚠️  No metadata.yml, skipping"
+              continue
+            fi
+
+            # Extract API spec type
+            API_SPEC_TYPE=$(yq eval '.api-spec-type' "$MODULE_PATH/metadata.yml")
+            echo "📋 API spec type: $API_SPEC_TYPE"
+
+            # Determine spec file based on type
+            if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
+              SPEC_FILE="$MODULE_PATH/asyncapi.yml"
+            elif [ "$API_SPEC_TYPE" = "rest" ]; then
+              SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
+            else
+              echo "⚠️  Unknown api-spec-type, skipping"
+              continue
+            fi
+
+            if [ ! -f "$SPEC_FILE" ]; then
+              echo "⚠️  Spec file not found: $SPEC_FILE, skipping"
+              continue
+            fi
+
+            # Extract version using extract-version script
+            API_VERSION=$(bash scripts/generators/common/extract-version.sh "$SPEC_FILE")
+            echo "📋 API version from spec: $API_VERSION"
+
+            # Determine Maven version based on branch
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              MAVEN_VERSION="$API_VERSION"
+              echo "🎯 Target branch: main → Maven version: $MAVEN_VERSION (stable)"
+            else
+              MAVEN_VERSION="${API_VERSION}-SNAPSHOT"
+              echo "🎯 Target branch: develop → Maven version: $MAVEN_VERSION (snapshot)"
+            fi
+
+            # Extract API name from metadata.yml
+            API_NAME=$(yq eval '.api.name' "$MODULE_PATH/metadata.yml")
+            echo "📋 API name: $API_NAME"
+
+            # Calculate artifact ID
+            MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+            ARTIFACT_ID="${MODULE_NAME}-stable"
+            echo "📦 Artifact ID: $ARTIFACT_ID"
+
+            # Append to module_versions.txt file
+            echo "${MODULE_PATH}|${API_NAME}|${ARTIFACT_ID}|${MAVEN_VERSION}" >> /tmp/module_versions.txt
+
+            echo "✅ $ARTIFACT_ID version: $MAVEN_VERSION"
+          done
+
+          # Sort the module info file alphabetically by module path
+          echo ""
+          echo "📝 Sorting module info for PR comment generation..."
+          sort -o /tmp/module_versions.txt /tmp/module_versions.txt
+
+          echo ""
+          echo "✅ Dependency info generated successfully"
+
+          # Generate PR comment
+          echo "=================================================="
+          echo "GENERATING PR COMMENT"
+          echo "=================================================="
+
           COMMENT="## 📦 Contracts Published Successfully\n\n"
-          
-          # Read module info from the file created in the previous step
-          if [ ! -f /tmp/module_versions.txt ]; then
-            echo "⚠️  No module versions file found, skipping PR comment generation"
+
+          # Read module info from the file
+          if [ ! -f /tmp/module_versions.txt ] || [ ! -s /tmp/module_versions.txt ]; then
+            echo "⚠️  No module versions file found or file is empty"
+            COMMENT="## 📦 No Contracts Published\n\nNo API modules were changed in this push.\n"
+            echo -e "$COMMENT" > /tmp/comment.txt
             exit 0
           fi
-          
+
           # File is already sorted alphabetically by module path
           while IFS='|' read -r MODULE_PATH API_NAME ARTIFACT_ID MAVEN_VERSION; do
             echo "Processing: $API_NAME ($MODULE_PATH)"
-            
+
             # Determine API type label
             if [[ "$MODULE_PATH" == *"/event" ]]; then
               TYPE_LABEL="AsyncAPI (Event)"
@@ -366,7 +407,7 @@ jobs:
             else
               TYPE_LABEL="API"
             fi
-            
+
             # Add section for this API
             COMMENT="${COMMENT}### ${API_NAME} (${TYPE_LABEL})\n"
             COMMENT="${COMMENT}**Version:** \`${MAVEN_VERSION}\`\n\n"
@@ -378,16 +419,19 @@ jobs:
             COMMENT="${COMMENT}</dependency>\n"
             COMMENT="${COMMENT}\`\`\`\n\n"
           done < /tmp/module_versions.txt
-          
+
           COMMENT="${COMMENT}---\n\n"
           COMMENT="${COMMENT}**📚 Package location:** [GitHub Packages](https://github.com/${{ github.repository }}/packages)\n"
-          
+
           # Save comment to file for the next step
           echo -e "$COMMENT" > /tmp/comment.txt
-          
+
           # Also output for logs
           echo "Generated comment:"
           cat /tmp/comment.txt
+
+          echo ""
+          echo "✅ PR comment generated successfully"
 
       - name: Find PR number and create comment
         if: steps.detect-changes.outputs.has_changes == 'true'

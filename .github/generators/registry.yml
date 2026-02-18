@@ -1,0 +1,93 @@
+---
+# Generator Registry
+# Defines all available code generators for API contracts
+
+generators:
+  mvn:
+    enabled: true
+    name: Maven (Java)
+    type: maven
+    version: 1.0.0
+    description: Generates Java artifacts using Maven, Avro, and OpenAPI Generator
+
+    runtime:
+      language: java
+      version: "21"
+
+    supported_spec_types:
+      - event      # AsyncAPI with Avro
+      - websocket  # AsyncAPI with Avro
+      - rest       # OpenAPI
+
+    tools:
+      maven:
+        version: "3.9.x"
+      avro:
+        tool: avro-tools
+        version: "1.11.3"
+        docker: apache/avro-tools:1.11.3
+      openapi:
+        tool: openapi-generator-cli
+        version: "7.2.0"
+        docker: openapitools/openapi-generator-cli:v7.2.0
+
+    artifact:
+      group_id: com.proactivedevs.contracts
+      name_pattern: "{module_path}-{stability}"  # e.g., tenants-event-stable
+
+    registries:
+      - type: github-packages
+        url: https://maven.pkg.github.com/roldaiateam/apis-especifications
+
+    config_path: .github/generators/mvn/config.yml
+
+  npm:
+    enabled: false  # Future implementation
+    name: npm (TypeScript)
+    type: npm
+    version: 0.1.0
+    description: Generates TypeScript artifacts using npm and AsyncAPI/OpenAPI generators
+
+    runtime:
+      language: typescript
+      version: "5.x"
+      node_version: "20.x"
+
+    supported_spec_types:
+      - event
+      - websocket
+      - rest
+
+    config_path: .github/generators/npm/config.yml
+
+  go:
+    enabled: false  # Future implementation
+    name: Go Modules
+    type: go
+    version: 0.1.0
+
+    runtime:
+      language: go
+      version: "1.21"
+
+    supported_spec_types:
+      - event
+      - rest
+
+    config_path: .github/generators/go/config.yml
+
+  python:
+    enabled: false  # Future implementation
+    name: Python (PyPI)
+    type: python
+    version: 0.1.0
+
+    runtime:
+      language: python
+      version: "3.11"
+
+    supported_spec_types:
+      - event
+      - rest
+
+    config_path: .github/generators/python/config.yml

@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>{{ maven.group_id }}</groupId>
+    <artifactId>{{ artifact_id }}</artifactId>
+    <version>{{ version }}</version>
+    <packaging>{{ module_defaults.rest.packaging }}</packaging>
+
+    <name>{{ module_name }}</name>
+    <description>{{ module_defaults.rest.description }}</description>
+
+    <properties>
+        <java.version>{{ maven.java_version }}</java.version>
+        <maven.compiler.source>{{ maven.java_version }}</maven.compiler.source>
+        <maven.compiler.target>{{ maven.java_version }}</maven.compiler.target>
+        <project.build.sourceEncoding>{{ maven.encoding }}</project.build.sourceEncoding>
+        <openapi-generator-maven-plugin.version>{{ maven.plugins.openapi_generator_maven_plugin }}</openapi-generator-maven-plugin.version>
+        <jackson-databind-nullable.version>{{ maven.dependencies.jackson_databind_nullable }}</jackson-databind-nullable.version>
+        <swagger-annotations.version>{{ maven.dependencies.swagger_annotations }}</swagger-annotations.version>
+        <jakarta.annotation-api.version>{{ maven.dependencies.jakarta_annotation_api }}</jakarta.annotation-api.version>
+        <jakarta.validation-api.version>{{ maven.dependencies.jakarta_validation_api }}</jakarta.validation-api.version>
+        <lombok.version>{{ maven.dependencies.lombok }}</lombok.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations</artifactId>
+            <version>${swagger-annotations.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.openapitools</groupId>
+            <artifactId>jackson-databind-nullable</artifactId>
+            <version>${jackson-databind-nullable.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>${jakarta.annotation-api.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+            <version>${jakarta.validation-api.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>${project.basedir}</directory>
+                <includes>
+                    {%- for include in module_defaults.rest.resources.includes %}
+                    <include>{{ include }}</include>
+                    {%- endfor %}
+                </includes>
+                <targetPath>{{ module_defaults.rest.spec_directory }}</targetPath>
+            </resource>
+        </resources>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>{{ maven.plugins.maven_resources }}</version>
+                <configuration>
+                    <encoding>{{ maven.encoding }}</encoding>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi-generator-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-openapi-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${project.basedir}/{{ module_defaults.rest.openapi.input_spec }}</inputSpec>
+                            <generatorName>{{ module_defaults.rest.openapi.generator_name }}</generatorName>
+                            <output>${project.build.directory}/{{ module_defaults.rest.openapi.output_directory }}</output>
+                            <modelPackage>{{ package_name }}.model</modelPackage>
+                            <generateApis>{{ module_defaults.rest.openapi.generate_apis|lower }}</generateApis>
+                            <generateModels>{{ module_defaults.rest.openapi.generate_models|lower }}</generateModels>
+                            <generateSupportingFiles>{{ module_defaults.rest.openapi.generate_supporting_files|lower }}</generateSupportingFiles>
+                            <configOptions>
+                                <useSpringBoot3>{{ module_defaults.rest.openapi.config_options.useSpringBoot3|lower }}</useSpringBoot3>
+                                <serializableModel>{{ module_defaults.rest.openapi.config_options.serializableModel|lower }}</serializableModel>
+                                <useJakartaEe>{{ module_defaults.rest.openapi.config_options.useJakartaEe|lower }}</useJakartaEe>
+                                <useLombok>{{ module_defaults.rest.openapi.config_options.useLombok|lower }}</useLombok>
+                                <openApiNullable>{{ module_defaults.rest.openapi.config_options.openApiNullable|lower }}</openApiNullable>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>{{ maven.plugins.build_helper_maven_plugin }}</version>
+                <executions>
+                    <execution>
+                        <id>add-openapi-sources</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <configuration>
+                            <sources>
+                                <source>${project.build.directory}/{{ module_defaults.rest.openapi.output_directory }}/src/main/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <distributionManagement>
+        <repository>
+            <id>{{ distribution.repository.id }}</id>
+            <name>{{ distribution.repository.name }}</name>
+            <url>{{ distribution.repository.url }}</url>
+        </repository>
+        <snapshotRepository>
+            <id>{{ distribution.snapshot_repository.id }}</id>
+            <name>{{ distribution.snapshot_repository.name }}</name>
+            <url>{{ distribution.snapshot_repository.url }}</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+</project>
