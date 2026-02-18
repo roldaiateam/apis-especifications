@@ -9,6 +9,3 @@ apis:
   - name: "Tenants REST API"
     api-spec-type: rest
     definition-path: tenants/rest
-  - name: "Tenants Websockets"
-    api-spec-type: websocket
-    definition-path: tenants/websocket
