@@ -29,9 +29,9 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 # Get absolute paths for Docker volume mounting
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ABS_MODULE_PATH="$REPO_ROOT/$MODULE_PATH"
-ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
+ABS_OUTPUT_DIR="$(realpath "$OUTPUT_DIR")"
 
 echo "Running OpenAPI code generation via Docker..."
 echo "Docker image: openapitools/openapi-generator-cli:v7.2.0"
