@@ -26,7 +26,7 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-          cache: 'maven'
+          # cache removed: POMs no longer exist in repo after Maven decoupling
 
       - name: Detect changed modules
         id: detect-changes
