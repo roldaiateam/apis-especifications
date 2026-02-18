@@ -29,12 +29,17 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 # Get absolute paths for Docker volume mounting
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ABS_MODULE_PATH="$REPO_ROOT/$MODULE_PATH"
-ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
+ABS_OUTPUT_DIR="$(realpath "$OUTPUT_DIR")"
 
 echo "Running OpenAPI code generation via Docker..."
 echo "Docker image: openapitools/openapi-generator-cli:v7.2.0"
+echo "DEBUG: REPO_ROOT=$REPO_ROOT"
+echo "DEBUG: ABS_MODULE_PATH=$ABS_MODULE_PATH"
+echo "DEBUG: ABS_OUTPUT_DIR=$ABS_OUTPUT_DIR"
+echo "DEBUG: Checking if spec file exists at: $ABS_MODULE_PATH/openapi-rest.yml"
+ls -la "$ABS_MODULE_PATH/openapi-rest.yml" || echo "ERROR: Spec file not found!"
 
 # Generate Java classes from OpenAPI spec
 docker run --rm \

@@ -27,12 +27,17 @@ fi
 mkdir -p "$OUTPUT_DIR"
 
 # Get absolute paths for Docker volume mounting
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ABS_MODULE_PATH="$REPO_ROOT/$MODULE_PATH"
-ABS_OUTPUT_DIR="$(cd "$OUTPUT_DIR" && pwd)"
+ABS_OUTPUT_DIR="$(realpath "$OUTPUT_DIR")"
 
 echo "Running Avro code generation via Docker..."
 echo "Docker image: apache/avro-tools:1.11.3"
+echo "DEBUG: REPO_ROOT=$REPO_ROOT"
+echo "DEBUG: ABS_MODULE_PATH=$ABS_MODULE_PATH"
+echo "DEBUG: ABS_OUTPUT_DIR=$ABS_OUTPUT_DIR"
+echo "DEBUG: Checking if Avro schema dir exists at: $ABS_MODULE_PATH/tenants-avro/v1"
+ls -la "$ABS_MODULE_PATH/tenants-avro/v1" || echo "ERROR: Avro schema dir not found!"
 
 # Generate Java classes from Avro schemas
 docker run --rm \
