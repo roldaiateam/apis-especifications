@@ -8,6 +8,7 @@ get:
   operationId: subscribeToTenantProvisioningEvents
   parameters:
     - $ref: '../../components/provisioning/components.yml#/components/parameters/SubscribeToTenantProvisioningEventsRequestTenantId'
+    - $ref: '../../components/provisioning/components.yml#/components/parameters/SubscribeToTenantProvisioningEventsRequestLastEventId'
   responses:
     '200':
       description: Event stream established
