@@ -194,13 +194,8 @@ cp -r "$MODULE_PATH"/* "$BUILD_DIR/"
 
 # Generate code based on module type
 if [ "$MODULE_TYPE" = "event" ] || [ "$MODULE_TYPE" = "websocket" ]; then
-    echo "Generating Avro code..."
-    OUTPUT_DIR="$BUILD_DIR/target/generated-sources/avro"
-    mkdir -p "$OUTPUT_DIR"
-
-    bash "$REPO_ROOT/scripts/generators/common/generate-avro.sh" \
-        "$MODULE_PATH" \
-        "$OUTPUT_DIR"
+    echo "Avro code generation handled by avro-maven-plugin during Maven build."
+    echo "Source schemas: $MODULE_PATH/$(yq eval '.module_defaults.event.avro.source_directory' "$MVN_CONFIG" 2>/dev/null || echo 'tenants-avro/v1')"
 
 elif [ "$MODULE_TYPE" = "rest" ]; then
     echo "Generating OpenAPI code..."
