@@ -4,7 +4,6 @@ post:
   summary: Login for a tenant user
   description: Authenticates a user within a tenant and returns access and refresh tokens.
   operationId: login
-  security: []
   requestBody:
     description: Credentials and tenant context for login
     required: true
