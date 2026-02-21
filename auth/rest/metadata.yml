@@ -1,0 +1,44 @@
+---
+api-spec-type: rest
+
+api:
+  name: Auth REST API
+  version: 0.0.1
+  description: >
+    This API provides authentication endpoints for tenant users.
+    It includes login to issue JWT access and refresh tokens.
+  maintainer:
+    name: Andrés Reinaldo Cid
+    email: andresrc345@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  basePath: /micclients
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+  documentation:
+    url: ./README.md
+
+openapi:
+  spec-version: 3.0.3
+  spec-file: openapi-rest.yml
+  format: openapi
+
+codegen:
+  package-prefix: com.proactivedevs.contracts.auth.rest.v1
+  model-package: com.proactivedevs.contracts.auth.rest.v1.model
+
+# Generator configurations
+generators:
+  mvn:
+    enabled: true
+    package_name: com.proactivedevs.contracts.auth.rest.v1
+    artifact_id_override: null  # Use default naming
+  npm:
+    enabled: false  # Future implementation
+    package_name: "@proactivedevs/contracts-auth-rest"
+  go:
+    enabled: false  # Future implementation
+  python:
+    enabled: false  # Future implementation

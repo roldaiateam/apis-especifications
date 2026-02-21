@@ -1,0 +1,39 @@
+openapi: 3.0.3
+
+info:
+  title: Auth API
+  description: >
+    This API provides endpoints for authentication and access control in a multi-tenant environment.
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+    url: 'http://roldaiateam.com'
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:8080/micclients
+    description: Localhost
+  - url: https://proactivedevs-template-des/micclients
+    description: DES
+  - url: https://proactivedevs-template-pre/micclients
+    description: PRE
+  - url: https://proactivedevs-template-prod/micclients
+    description: PRO
+
+tags:
+  - name: Auth
+    description: Operations about authentication
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v1/auth/login:
+    $ref: './v1/services/auth/auth-login.yml'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

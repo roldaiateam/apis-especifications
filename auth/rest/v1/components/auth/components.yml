@@ -1,0 +1,35 @@
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          description: Email address of the user
+          maxLength: 255
+          example: "john.doe@example.com"
+        password:
+          type: string
+          description: >
+            Password must contain 8-100 characters, at least one uppercase letter,
+            one lowercase letter, one number and one special character.
+          minLength: 8
+          maxLength: 100
+          pattern: "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&._#\\-])[A-Za-z\\d@$!%*?&._#\\-]{8,100}$"
+          example: "P@ssw0rd!"
+    LoginResponse:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          description: Unique identifier for the tenant
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        token:
+          type: string
+          description: Authentication token for the newly created tenant
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."

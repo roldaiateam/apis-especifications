@@ -1,0 +1,31 @@
+post:
+  tags:
+    - Auth
+  summary: Login for a tenant user
+  description: Authenticates a user within a tenant and returns access and refresh tokens.
+  operationId: login
+  security: []
+  requestBody:
+    description: Credentials and tenant context for login
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/auth/components.yml#/components/schemas/LoginRequest'
+  responses:
+    '200':
+      description: Login successful
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/auth/components.yml#/components/schemas/LoginResponse'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
