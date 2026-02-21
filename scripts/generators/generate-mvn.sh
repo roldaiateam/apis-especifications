@@ -21,6 +21,18 @@ STABILITY="$2"
 VERSION_OVERRIDE="${3:-}"
 DEPLOY_FLAG="${4:-}"
 
+# Setup cleanup trap for temporary directories
+BUILD_DIR_ROOT="/tmp/apis-build-$$"
+cleanup_build_dir() {
+    if [ -d "$BUILD_DIR_ROOT" ]; then
+        echo ""
+        echo "🧹 Cleaning up temporary build directory..."
+        rm -rf "$BUILD_DIR_ROOT"
+        echo "✅ Cleanup completed: $BUILD_DIR_ROOT"
+    fi
+}
+trap cleanup_build_dir EXIT
+
 # Determine deployment flag
 SHOULD_DEPLOY=false
 if [ "$DEPLOY_FLAG" = "--deploy" ] || [ "$VERSION_OVERRIDE" = "--deploy" ]; then
@@ -103,8 +115,8 @@ if [ ! -f "$MVN_CONFIG" ]; then
     exit 1
 fi
 
-# Create temporary build directory
-BUILD_DIR="/tmp/apis-build-$$/$ARTIFACT_ID"
+# Create temporary build directory (cleanup handled by trap)
+BUILD_DIR="$BUILD_DIR_ROOT/$ARTIFACT_ID"
 mkdir -p "$BUILD_DIR"
 echo "Build directory: $BUILD_DIR"
 
@@ -205,23 +217,9 @@ fi
 echo "Creating Maven source directories..."
 mkdir -p "$BUILD_DIR/src/main/resources"
 
-# For Avro/Event modules, copy generated sources to src/main/java
-# (Avro outputs files directly, not in src/main/java structure)
-# For REST modules, skip copying - OpenAPI generator already creates src/main/java structure
-# and build-helper-maven-plugin will add it to the compile classpath
-if [ "$MODULE_TYPE" = "event" ] || [ "$MODULE_TYPE" = "websocket" ]; then
-    mkdir -p "$BUILD_DIR/src/main/java"
-    if [ -d "$OUTPUT_DIR" ]; then
-        echo "Copying Avro generated sources to Maven structure..."
-        find "$OUTPUT_DIR" -name "*.java" -type f -exec cp --parents {} "$BUILD_DIR/src/main/java/" \; 2>/dev/null || \
-        find "$OUTPUT_DIR" -name "*.java" -type f | while read -r file; do
-            rel_path=$(echo "$file" | sed "s|$OUTPUT_DIR/||")
-            target_file="$BUILD_DIR/src/main/java/$rel_path"
-            mkdir -p "$(dirname "$target_file")"
-            cp "$file" "$target_file"
-        done
-    fi
-fi
+# For Avro/Event modules: Docker-generated Java files are in target/generated-sources/avro.
+# build-helper-maven-plugin (in pom.event.xml.j2) adds that directory to Maven's source path.
+# No manual copy to src/main/java needed — that would cause duplicate class errors.
 
 # Copy spec files and resources to src/main/resources
 echo "Copying resources..."
