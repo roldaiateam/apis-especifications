@@ -6,8 +6,6 @@ get:
     Returns the current state of the tenant provisioning process.
     This endpoint acts as a fallback mechanism if the SSE stream is unavailable.
   operationId: getTenantProvisioningStatus
-  parameters:
-    - $ref: '../../components/provisioning/components.yml#/components/parameters/GetTenantProvisioningStatusRequestTenantId'
   responses:
     '200':
       description: Event stream established
