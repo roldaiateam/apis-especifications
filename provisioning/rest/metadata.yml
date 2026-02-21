@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Provisioning REST API
-  version: 0.0.1
+  version: 0.0.2
   description: >
     This API provides endpoints to track tenant provisioning lifecycle in real time.
     It includes an SSE stream for provisioning events and a polling fallback for current status.
