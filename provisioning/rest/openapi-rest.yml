@@ -30,7 +30,7 @@ security:
   - bearerAuth: []
 
 paths:
-  /v1/tenants/{tenantId}/status:
+  /v1/tenants/status:
     $ref: './v1/services/provisioning/tenants-status.yml'
 
 components:
