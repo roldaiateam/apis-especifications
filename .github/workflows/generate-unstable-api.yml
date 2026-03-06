@@ -67,13 +67,13 @@ jobs:
           fi
           
           if [ -z "$API_NAME" ]; then
-            echo "❌ Could not parse --name argument"
-            echo "error=missing-name" >> $GITHUB_OUTPUT
-            exit 1
+            echo "mode=auto-detect" >> $GITHUB_OUTPUT
+            echo "📋 No --name specified: will auto-detect modified APIs in this PR"
+          else
+            echo "mode=specific" >> $GITHUB_OUTPUT
+            echo "api_name=$API_NAME" >> $GITHUB_OUTPUT
+            echo "📋 API Name: $API_NAME"
           fi
-          
-          echo "api_name=$API_NAME" >> $GITHUB_OUTPUT
-          echo "📋 API Name: $API_NAME"
           
           # Extract --type argument (generator type: mvn, npm, go, python)
           # Default to "all" if not specified
@@ -98,9 +98,11 @@ jobs:
             
             console.log('PR head ref:', pr.head.ref);
             console.log('PR head sha:', pr.head.sha);
-            
+            console.log('PR base ref:', pr.base.ref);
+
             core.setOutput('head_ref', pr.head.ref);
             core.setOutput('head_sha', pr.head.sha);
+            core.setOutput('base_ref', pr.base.ref);
             return pr.head.ref;
 
       - name: Checkout PR branch
@@ -129,6 +131,7 @@ jobs:
 
       - name: Find module by API name
         id: find-module
+        if: steps.parse-args.outputs.mode == 'specific'
         env:
           API_NAME: ${{ steps.parse-args.outputs.api_name }}
         run: |
@@ -159,6 +162,7 @@ jobs:
 
       - name: Validate generator type
         id: validate-generator
+        if: steps.parse-args.outputs.mode == 'specific'
         env:
           GENERATOR_TYPE: ${{ steps.parse-args.outputs.generator_type }}
         run: |
@@ -187,6 +191,7 @@ jobs:
 
       - name: Extract API version and metadata
         id: extract-version
+        if: steps.parse-args.outputs.mode == 'specific'
         env:
           MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
         run: |
@@ -240,6 +245,7 @@ jobs:
 
       - name: Compute unstable version and artifact ID
         id: compute-unstable
+        if: steps.parse-args.outputs.mode == 'specific'
         env:
           MODULE_PATH: ${{ steps.find-module.outputs.module_path }}
           API_VERSION: ${{ steps.extract-version.outputs.api_version }}
@@ -280,6 +286,7 @@ jobs:
           server-password: GITHUB_TOKEN
 
       - name: Generate and deploy unstable with generators
+        if: steps.parse-args.outputs.mode == 'specific'
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -356,8 +363,179 @@ jobs:
           echo "✅ All generators completed successfully"
           echo "=================================================="
 
+      - name: Auto-detect and generate modified APIs
+        if: steps.parse-args.outputs.mode == 'auto-detect'
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GENERATOR_TYPE: ${{ steps.parse-args.outputs.generator_type }}
+          HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
+          BASE_REF: ${{ steps.pr-details.outputs.base_ref }}
+        run: |
+          set -e
+
+          echo "=================================================="
+          echo "AUTO-DETECTING MODIFIED APIs"
+          echo "=================================================="
+
+          # Get list of files changed in this PR
+          git fetch origin "$BASE_REF"
+          CHANGED_FILES=$(git diff --name-only "origin/$BASE_REF"...HEAD)
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+          echo ""
+
+          # Find which APIs have been modified
+          APIS_TO_GENERATE=()
+          while IFS='|' read -r API_NAME DEF_PATH; do
+            if echo "$CHANGED_FILES" | grep -q "^${DEF_PATH}/"; then
+              echo "✅ Modified: $API_NAME (path: $DEF_PATH)"
+              APIS_TO_GENERATE+=("$API_NAME|$DEF_PATH")
+            fi
+          done < <(yq eval '.apis[] | .name + "|" + ."definition-path"' metadata.yml)
+
+          if [ ${#APIS_TO_GENERATE[@]} -eq 0 ]; then
+            echo "❌ No modified APIs found in this PR"
+            echo "   Changed files do not match any registered API path"
+            echo ""
+            echo "Registered APIs:"
+            yq eval '.apis[] | "  - " + .name + " (" + ."definition-path" + ")"' metadata.yml
+            exit 1
+          fi
+
+          echo ""
+          echo "📋 APIs to generate: ${#APIS_TO_GENERATE[@]}"
+          echo ""
+
+          # Sanitize branch name (replace / with -)
+          BRANCH_NAME=$(echo "$HEAD_REF" | sed 's/\//-/g')
+
+          # Generate each modified API
+          > /tmp/auto_detect_results.txt
+          for ENTRY in "${APIS_TO_GENERATE[@]}"; do
+            API_NAME=$(echo "$ENTRY" | cut -d'|' -f1)
+            MODULE_PATH=$(echo "$ENTRY" | cut -d'|' -f2)
+
+            echo "=================================================="
+            echo "Generating: $API_NAME"
+            echo "Module: $MODULE_PATH"
+            echo "=================================================="
+
+            METADATA_FILE="$MODULE_PATH/metadata.yml"
+
+            # Determine spec type and file
+            API_SPEC_TYPE=$(grep '^api-spec-type:' "$METADATA_FILE" | awk '{print $2}' | tr -d '"' | tr -d "'")
+
+            if [ "$API_SPEC_TYPE" = "event" ] || [ "$API_SPEC_TYPE" = "websocket" ]; then
+              SPEC_FILE="$MODULE_PATH/asyncapi.yml"
+            elif [ "$API_SPEC_TYPE" = "rest" ]; then
+              SPEC_FILE="$MODULE_PATH/openapi-rest.yml"
+            else
+              echo "❌ Unknown api-spec-type: $API_SPEC_TYPE for $API_NAME"
+              exit 1
+            fi
+
+            if [ ! -f "$SPEC_FILE" ]; then
+              echo "❌ Spec file not found: $SPEC_FILE"
+              exit 1
+            fi
+
+            # Extract version
+            API_VERSION=$(grep -A 10 '^info:' "$SPEC_FILE" | grep -E '^[[:space:]]+version:' | head -n 1 | sed 's/.*version:[[:space:]]*//' | tr -d '"' | tr -d "'")
+
+            if [ -z "$API_VERSION" ]; then
+              echo "❌ Could not extract version from $SPEC_FILE"
+              exit 1
+            fi
+
+            # Compute unstable version
+            UNSTABLE_VERSION="${API_VERSION}-${BRANCH_NAME}-SNAPSHOT"
+
+            echo "API version: $API_VERSION"
+            echo "Unstable version: $UNSTABLE_VERSION"
+
+            # Determine generators to use
+            if [ "$GENERATOR_TYPE" = "all" ]; then
+              GENERATORS=$(yq eval '.generators | to_entries | map(select(.value.enabled == true)) | .[].key' "$METADATA_FILE")
+            else
+              IS_ENABLED=$(yq eval ".generators.$GENERATOR_TYPE.enabled // false" "$METADATA_FILE")
+              if [ "$IS_ENABLED" != "true" ]; then
+                echo "❌ Generator '$GENERATOR_TYPE' is not enabled for $API_NAME"
+                exit 1
+              fi
+              GENERATORS="$GENERATOR_TYPE"
+            fi
+
+            echo "Generators: $GENERATORS"
+
+            # Generate with each generator
+            for GEN in $GENERATORS; do
+              echo "🚀 Generating with $GEN..."
+              bash scripts/generators/generate-${GEN}.sh \
+                "$MODULE_PATH" \
+                "unstable" \
+                "$UNSTABLE_VERSION" \
+                --deploy
+              echo "✅ Generated with $GEN"
+            done
+
+            # Store result for success comment
+            MODULE_NAME=$(echo "$MODULE_PATH" | tr '/' '-')
+            UNSTABLE_ARTIFACT_ID="${MODULE_NAME}-unstable"
+            GENERATORS_LIST=$(echo "$GENERATORS" | tr '\n' ',' | sed 's/,$//')
+            echo "${API_NAME}|${UNSTABLE_ARTIFACT_ID}|${UNSTABLE_VERSION}|${GENERATORS_LIST}" >> /tmp/auto_detect_results.txt
+
+            echo "✅ Completed: $API_NAME"
+            echo ""
+          done
+
+          echo "=================================================="
+          echo "✅ All modified APIs generated successfully"
+          echo "=================================================="
+
+      - name: Post auto-detect success comment
+        if: success() && steps.parse-args.outputs.mode == 'auto-detect'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const runUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            let comment = `## ✅ Versiones Unstable Generadas Exitosamente\n\n`;
+            comment += `Las APIs modificadas en este PR han sido generadas:\n\n`;
+
+            try {
+              const results = fs.readFileSync('/tmp/auto_detect_results.txt', 'utf8').trim();
+              for (const line of results.split('\n')) {
+                if (!line) continue;
+                const [apiName, artifactId, version, generators] = line.split('|');
+                comment += `### ${apiName}\n`;
+                comment += `**Version:** \`${version}\`\n`;
+                comment += `**Generadores:** ${generators}\n\n`;
+                if (generators && generators.includes('mvn')) {
+                  comment += `\`\`\`xml\n<dependency>\n    <groupId>com.proactivedevs.contracts</groupId>\n    <artifactId>${artifactId}</artifactId>\n    <version>${version}</version>\n</dependency>\n\`\`\`\n\n`;
+                }
+              }
+            } catch (e) {
+              comment += `_(Ver logs para detalles)_\n\n`;
+            }
+
+            comment += `---\n\n`;
+            comment += `⚠️ **Nota:** Versiones **inestables** generadas desde este PR. Se eliminarán al hacer merge.\n\n`;
+            comment += `📦 **Ubicación:** [GitHub Packages](https://github.com/${context.repo.owner}/${context.repo.repo}/packages)\n`;
+            comment += `🔗 **Logs:** [Ver ejecución](${runUrl})\n`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
       - name: Post success comment
-        if: success()
+        if: success() && steps.parse-args.outputs.mode == 'specific'
         uses: actions/github-script@v7
         env:
           API_NAME: ${{ steps.parse-args.outputs.api_name }}
