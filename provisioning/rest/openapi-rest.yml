@@ -9,7 +9,7 @@ info:
     name: Roldaia Team
     email: roldaiateam@gmail.com
     url: 'http://roldaiateam.com'
-  version: 0.0.1
+  version: 0.0.3
 
 servers:
   - url: http://localhost:8080/micclients
@@ -30,8 +30,6 @@ security:
   - bearerAuth: []
 
 paths:
-  /v1/tenants/{tenantId}/events:
-    $ref: './v1/services/provisioning/tenants-events.yml'
   /v1/tenants/{tenantId}/status:
     $ref: './v1/services/provisioning/tenants-status.yml'
 
