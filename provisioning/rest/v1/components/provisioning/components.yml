@@ -21,48 +21,11 @@ components:
     TenantProvisioningStatus:
       type: object
       required:
-        - status
-        - progress
-        - currentStep
-        - startedAt
-        - completedAt
-        - errorMessage
+        - isCompleted
       properties:
-        status:
-          type: string
-          description: Overall status of the provisioning process
-          enum:
-            - PENDING
-            - IN_PROGRESS
-            - COMPLETED
-            - FAILED
-          example: "IN_PROGRESS"
-        progress:
-          type: integer
-          minimum: 0
-          maximum: 100
-          description: Completion percentage
-          example: 40
-        currentStep:
-          type: string
-          description: Name of the current provisioning step
-          example: "INVENTORY_SCHEMA_CREATED"
-        startedAt:
-          type: string
-          format: date-time
-          description: Start date and time of the provisioning process
-          example: "2026-02-18T10:12:03Z"
-        completedAt:
-          type: string
-          format: date-time
-          nullable: true
-          description: Completion date and time of the provisioning process, or null if not completed
-          example: "2026-02-18T10:12:05Z"
-        errorMessage:
-          type: string
-          nullable: true
-          description: Error message if the provisioning failed, or null otherwise
-          example: "Failed to create inventory schema"
+        isCompleted:
+          type: boolean
+          description: Indicates whether the tenant provisioning process is completed.
   parameters:
     SubscribeToTenantProvisioningEventsRequestTenantId:
       name: tenantId
