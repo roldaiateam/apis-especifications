@@ -12,3 +12,6 @@ apis:
   - name: "Provisioning REST API"
     api-spec-type: rest
     definition-path: provisioning/rest
+  - name: "Categories REST API"
+    api-spec-type: rest
+    definition-path: categories/rest

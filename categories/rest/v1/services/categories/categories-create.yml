@@ -1,0 +1,30 @@
+post:
+  tags:
+    - Categories
+  summary: Create a new category
+  description: Creates a new category in the system. The tenant is automatically resolved from the JWT token.
+  operationId: createCategory
+  requestBody:
+    description: Data for creating a new category
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/categories/components.yml#/components/schemas/CreateCategoryRequest'
+  responses:
+    "201":
+      description: Category created successfully
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/categories/components.yml#/components/schemas/CreateCategoryResponse"
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
