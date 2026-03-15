@@ -4,7 +4,6 @@ get:
   summary: Get tenant provisioning status events
   description: |
     Returns the current state of the tenant provisioning process.
-    This endpoint acts as a fallback mechanism if the SSE stream is unavailable.
   operationId: getTenantProvisioningStatus
   responses:
     '200':

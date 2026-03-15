@@ -236,8 +236,12 @@ jobs:
               continue
             fi
 
-            # Determine stability based on branch (always use "stable" artifact ID)
-            STABILITY="stable"
+            # Determine stability based on branch
+            if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+              STABILITY="stable"
+            else
+              STABILITY="snapshot"
+            fi
             echo "📦 Stability: $STABILITY"
 
             # Build with generator (no deploy flag yet)
@@ -284,7 +288,11 @@ jobs:
             fi
 
             # Determine stability based on branch
-            STABILITY="stable"
+            if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+              STABILITY="stable"
+            else
+              STABILITY="snapshot"
+            fi
             echo "📦 Stability: $STABILITY"
 
             # Deploy with generator (--deploy flag)
