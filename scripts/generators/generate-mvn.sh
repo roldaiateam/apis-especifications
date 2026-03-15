@@ -100,7 +100,7 @@ echo "Maven version: $MAVEN_VERSION"
 
 # Determine artifact ID based on module path and stability
 MODULE_NAME=$(echo "$MODULE_PATH" | sed 's/\//\-/g')
-if [ "$STABILITY" = "stable" ]; then
+if [ "$STABILITY" = "stable" ] || [ "$STABILITY" = "snapshot" ]; then
     ARTIFACT_ID="${MODULE_NAME}-stable"
 else
     ARTIFACT_ID="${MODULE_NAME}-unstable"
