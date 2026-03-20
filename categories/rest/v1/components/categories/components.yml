@@ -1,0 +1,34 @@
+components:
+  schemas:
+    CreateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the category
+          minLength: 2
+          maxLength: 100
+          pattern: "^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 &.\\-]+$"
+          example: "Electronics"
+        description:
+          type: string
+          description: Description of the category
+          maxLength: 500
+          example: "All electronic devices and accessories"
+        parentCategoryId:
+          type: integer
+          format: int64
+          description: Identifier of the parent category for hierarchical classification
+          example: 1
+
+      required:
+        - name
+
+    CreateCategoryResponse:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+          format: int64
+          description: Unique identifier for the created category
+          example: 42
