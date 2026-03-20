@@ -32,3 +32,26 @@ components:
           format: int64
           description: Unique identifier for the created category
           example: 42
+    GetCategoriesResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          description: List of categories available in the system for the tenant
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+    CategorySummary:
+      type: object
+      description: Summary information about a category, used for listing categories without detailed information
+      properties:
+        id:
+          $ref: '#/components/schemas/CategoryId'
+        name:
+          type: string
+          description: Name of the category
+          example: "Electronics"
+    CategoryId:
+      type: integer
+      format: int64
+      description: Unique identifier for the category
+      example: 42

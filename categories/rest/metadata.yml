@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Categories REST API
-  version: 0.0.1
+  version: 0.0.2
   description: >
     This API provides endpoints that allow tenants to manage category information within the system.
     It enables operations such as creating new categories and managing category data.
