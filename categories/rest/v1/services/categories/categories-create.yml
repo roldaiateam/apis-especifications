@@ -28,3 +28,24 @@ post:
       $ref: '../../components/errors/components.yml#/components/responses/Conflict'
     '500':
       $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
+get:
+  tags:
+    - Categories
+  summary: Get all categories
+  description: Retrieves a list of all categories available in the system for the tenant resolved from the
+  operationId: getCategories
+  responses:
+    "200":
+      description: List of categories retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: "../../components/categories/components.yml#/components/schemas/GetCategoriesResponse"
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
