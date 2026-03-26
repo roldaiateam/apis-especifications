@@ -28,9 +28,6 @@ security:
   - bearerAuth: []
 
 paths:
-  /v1/products:
-    $ref: './v1/services/products/products-create.yml'
-
   /v1/products/barcode-types:
     $ref: './v1/services/products/barcode-types.yml'
 

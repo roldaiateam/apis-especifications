@@ -4,9 +4,6 @@ get:
   summary: Get product barcode types
   description: |
     Retrieves the available barcode type names for products.
-
-    The tenant is resolved from the `tenant_name` claim in the JWT token.
-    The `store_admin` role is required.
   operationId: getProductBarcodeTypes
   responses:
     '200':
@@ -14,16 +11,7 @@ get:
       content:
         application/json:
           schema:
-            type: array
-            description: Barcode type names.
-            items:
-              type: string
-              example: EAN13
-            example:
-              - EAN13
-              - EAN8
-              - UPC
-              - QR
+            $ref: '../../components/products/components.yml#/components/schemas/GetProductBarcodeTypesResponse'
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':

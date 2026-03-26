@@ -1,156 +1,22 @@
 components:
   schemas:
-    ProductId:
-      type: integer
-      format: int64
-      description: Unique identifier for the product
-      example: 101
-
-    CategoryId:
-      type: integer
-      format: int64
-      description: Identifier of the category associated with the product
-      example: 10
-
-    UnitOfMeasureId:
-      type: integer
-      format: int64
-      description: Identifier of the unit of measure from products units catalog
-      example: 1
-
+    GetProductBarcodeTypesResponse:
+      type: object
+      properties:
+        barcodeTypes:
+          type: array
+          description: List of available barcode types for products.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/BarcodeTypeId'
+              name:
+                type: string
+                description: Name of the barcode type
+                example: "EAN-13"
     BarcodeTypeId:
       type: integer
       format: int64
       description: Identifier of the barcode type from products barcode types catalog
       example: 1
-
-    CreateProductBarcode:
-      type: object
-      additionalProperties: false
-      required:
-        - barcode
-        - barcodeTypeId
-        - isDefault
-      properties:
-        barcode:
-          type: string
-          description: Barcode value. Must be unique per tenant.
-          minLength: 1
-          maxLength: 100
-          example: "8412345678901"
-        barcodeTypeId:
-          $ref: '#/components/schemas/BarcodeTypeId'
-        isDefault:
-          type: boolean
-          description: Exactly one barcode must be marked as default when barcodes are provided.
-          example: true
-
-    CreateProductRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - name
-        - sku
-        - unitOfMeasureId
-      properties:
-        name:
-          type: string
-          description: Product name.
-          minLength: 1
-          maxLength: 150
-          example: "Leche Entera 1L"
-        sku:
-          type: string
-          description: Product SKU. Must be unique per tenant.
-          minLength: 1
-          maxLength: 100
-          example: "LECH-ENT-1L"
-        categoryId:
-          $ref: '#/components/schemas/CategoryId'
-        unitOfMeasureId:
-          $ref: '#/components/schemas/UnitOfMeasureId'
-        trackedByBatch:
-          type: boolean
-          description: Batch tracking flag
-          default: false
-          example: true
-        trackedBySerial:
-          type: boolean
-          description: Serial number tracking flag. Cannot be true with trackedByBatch.
-          default: false
-          example: false
-        trackedByExpiry:
-          type: boolean
-          description: Expiry tracking flag. Can be true only when trackedByBatch is true.
-          default: false
-          example: true
-        description:
-          type: string
-          description: Product description
-          maxLength: 500
-          example: "Leche entera pasteurizada de 1 litro"
-        barcodes:
-          type: array
-          description: Optional barcode list for product creation.
-          items:
-            $ref: '#/components/schemas/CreateProductBarcode'
-
-    CreateProductResponse:
-      type: object
-      additionalProperties: false
-      required:
-        - id
-        - name
-        - sku
-        - unitOfMeasureId
-        - trackedByBatch
-        - trackedBySerial
-        - trackedByExpiry
-        - active
-        - createdAt
-      properties:
-        id:
-          $ref: '#/components/schemas/ProductId'
-        name:
-          type: string
-          maxLength: 150
-          example: "Leche Entera 1L"
-        sku:
-          type: string
-          maxLength: 100
-          example: "LECH-ENT-1L"
-        categoryId:
-          type: integer
-          format: int64
-          nullable: true
-          example: 10
-        unitOfMeasureId:
-          $ref: '#/components/schemas/UnitOfMeasureId'
-        trackedByBatch:
-          type: boolean
-          example: true
-        trackedBySerial:
-          type: boolean
-          example: false
-        trackedByExpiry:
-          type: boolean
-          example: true
-        description:
-          type: string
-          maxLength: 500
-          nullable: true
-          example: "Leche entera pasteurizada de 1 litro"
-        active:
-          type: boolean
-          description: Indicates whether the product is active
-          example: true
-        createdAt:
-          type: string
-          format: date-time
-          description: Creation timestamp in UTC
-          example: "2026-03-20T10:15:30Z"
-        barcodes:
-          type: array
-          description: Barcode list associated with the product.
-          items:
-            $ref: '#/components/schemas/CreateProductBarcode'
