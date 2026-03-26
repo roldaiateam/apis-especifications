@@ -1,0 +1,42 @@
+openapi: 3.0.3
+
+info:
+  title: Products API
+  description: Provides endpoints that allow tenants to manage product information for inventory operations
+  contact:
+    name: Proactive Devs team
+    email: proactivedevs@gmail.com
+    url: 'http://proactivedevs.com'
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:8090/mic-inventory
+    description: Localhost
+  - url: https://proactivedevs-template-des/mic-inventory
+    description: DES
+  - url: https://proactivedevs-template-pre/mic-inventory
+    description: PRE
+  - url: https://proactivedevs-template-prod/mic-inventory
+    description: PRO
+
+tags:
+  - name: Products
+    description: Operations about Products management
+
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+paths:
+  /v1/products:
+    $ref: './v1/services/products/products-create.yml'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

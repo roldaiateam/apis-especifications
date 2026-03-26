@@ -1,0 +1,46 @@
+post:
+  tags:
+    - Products
+  summary: Create a new product
+  description: |
+    Creates a new product in the system.
+
+    The tenant is resolved from the `tenant_name` claim in the JWT token.
+    The `store_admin` role is required.
+
+    Logical validation rules:
+    - `trackedByBatch` and `trackedBySerial` cannot both be `true`.
+    - `trackedByExpiry` can be `true` only when `trackedByBatch` is `true`.
+    - `sku` must be unique per tenant.
+    - `categoryId`, when provided, must exist in the same tenant.
+    - `unitOfMeasureId` must exist in units catalog.
+    - Product can be created without barcodes.
+    - When `barcodes` is provided, exactly one item must have `isDefault=true`.
+    - Each barcode value must be unique per tenant.
+  operationId: createProduct
+  requestBody:
+    description: Data for creating a new product
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/products/components.yml#/components/schemas/CreateProductRequest'
+  responses:
+    '201':
+      description: Product created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/products/components.yml#/components/schemas/CreateProductResponse'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      $ref: '../../components/errors/components.yml#/components/responses/NotFound'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
