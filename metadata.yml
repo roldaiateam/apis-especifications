@@ -15,3 +15,6 @@ apis:
   - name: "Categories REST API"
     api-spec-type: rest
     definition-path: categories/rest
+  - name: "Products REST API"
+    api-spec-type: rest
+    definition-path: products/rest

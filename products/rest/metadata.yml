@@ -1,0 +1,43 @@
+---
+api-spec-type: rest
+
+api:
+  name: Products REST API
+  version: 0.0.1
+  description: >
+    This API provides endpoints to manage products for tenant inventory workflows.
+    It includes product creation with tenant-scoped uniqueness and stock tracking metadata.
+  maintainer:
+    name: Andres Reinaldo Cid
+    email: andresrc345@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  basePath: /api/products
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+  documentation:
+    url: ./README.md
+
+openapi:
+  spec-version: 3.0.3
+  spec-file: openapi-rest.yml
+  format: openapi
+
+codegen:
+  package-prefix: com.proactivedevs.contracts.products.rest.v1
+  model-package: com.proactivedevs.contracts.products.rest.v1.model
+
+generators:
+  mvn:
+    enabled: true
+    package_name: com.proactivedevs.contracts.products.rest.v1
+    artifact_id_override: null
+  npm:
+    enabled: false
+    package_name: "@proactivedevs/contracts-products-rest"
+  go:
+    enabled: false
+  python:
+    enabled: false

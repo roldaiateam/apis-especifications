@@ -1,0 +1,22 @@
+get:
+  tags:
+    - Products
+  summary: Get product barcode types
+  description: |
+    Retrieves the available barcode type names for products.
+  operationId: getProductBarcodeTypes
+  responses:
+    '200':
+      description: Barcode type list retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/products/components.yml#/components/schemas/GetProductBarcodeTypesResponse'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
