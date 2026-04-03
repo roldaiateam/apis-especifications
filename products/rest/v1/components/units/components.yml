@@ -19,6 +19,10 @@ components:
           type: string
           description: Name of the unit of measure
           example: "Piece"
+        symbol:
+          type: string
+          description: Symbol representing the unit of measure
+          example: "kg"
     UnitOfMeasureId:
       type: integer
       format: int64
