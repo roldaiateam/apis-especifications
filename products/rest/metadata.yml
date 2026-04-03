@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Products REST API
-  version: 0.0.1
+  version: 0.0.2
   description: >
     This API provides endpoints to manage products for tenant inventory workflows.
     It includes product creation with tenant-scoped uniqueness and stock tracking metadata.

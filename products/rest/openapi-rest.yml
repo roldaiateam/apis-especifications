@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 0.0.1
+  version: 0.0.2
 
 servers:
   - url: http://localhost:8090/mic-inventory
@@ -29,7 +29,9 @@ security:
 
 paths:
   /v1/products/barcode-types:
-    $ref: './v1/services/products/barcode-types.yml'
+    $ref: './v1/services/barcode/barcode-types.yml'
+  /v1/products/units:
+    $ref: './v1/services/units/units.yml'
 
 components:
   securitySchemes:

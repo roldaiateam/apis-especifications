@@ -1,0 +1,26 @@
+components:
+  schemas:
+    GetProductUnitsResponse:
+      type: object
+      properties:
+        unitsOfMeasure:
+          type: array
+          description: List of available units of measure for products.
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/UnitOfMeasure"
+    UnitOfMeasure:
+      type: object
+      description: Information about a unit of measure, used for listing available units without detailed information
+      properties:
+        id:
+          $ref: '#/components/schemas/UnitOfMeasureId'
+        name:
+          type: string
+          description: Name of the unit of measure
+          example: "Piece"
+    UnitOfMeasureId:
+      type: integer
+      format: int64
+      description: Identifier of the unit of measure from products units of measure catalog
+      example: 1

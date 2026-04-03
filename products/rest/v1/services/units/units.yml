@@ -1,17 +1,17 @@
 get:
   tags:
     - Products
-  summary: Get product barcode types
+  summary: Get all product units
   description: |
-    Retrieves the available barcode type names for products.
-  operationId: getProductBarcodeTypes
+    Retrieves the available unit names for products.
+  operationId: getAllProductUnits
   responses:
     '200':
-      description: Barcode type list retrieved successfully
+      description: Unit list retrieved successfully
       content:
         application/json:
           schema:
-            $ref: '../../components/products/components.yml#/components/schemas/GetProductBarcodeTypesResponse'
+            $ref: '../../components/units/components.yml#/components/schemas/GetProductUnitsResponse'
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':
