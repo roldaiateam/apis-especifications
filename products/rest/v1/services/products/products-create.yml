@@ -1,0 +1,49 @@
+post:
+  tags:
+    - Products
+  summary: Create a new product
+  description: >
+    Creates a new product in the products catalog.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Barcodes are optional at creation time; if provided, exactly one must be marked as default.
+  operationId: createProduct
+  requestBody:
+    description: Data for creating a new product
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/products/components.yml#/components/schemas/CreateProductRequest'
+        example:
+          name: "Leche Entera 1L"
+          sku: "LECH-ENT-1L"
+          categoryId: 10
+          unitOfMeasureId: 1
+          trackedByBatch: true
+          trackedBySerial: false
+          trackedByExpiry: true
+          description: "Leche entera pasteurizada de 1 litro"
+          barcodes:
+            - barcode: "8412345678901"
+              barcodeTypeId: 1
+              isDefault: true
+  responses:
+    '201':
+      description: Product created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/products/components.yml#/components/schemas/CreateProductResponse'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      $ref: '../../components/errors/components.yml#/components/responses/NotFound'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

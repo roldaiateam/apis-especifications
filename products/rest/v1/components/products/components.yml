@@ -1,0 +1,94 @@
+components:
+  schemas:
+    CreateProductRequest:
+      type: object
+      description: >
+        Request payload for creating a new product. The tenant is automatically resolved from the JWT token.
+        Business rules:
+        - `trackedByBatch` and `trackedBySerial` are mutually exclusive (cannot both be true).
+        - `trackedByExpiry: true` requires `trackedByBatch: true`.
+        - If `barcodes` is provided, exactly one item must have `isDefault: true`.
+        - Each barcode value must be unique per tenant.
+      required:
+        - name
+        - sku
+        - unitOfMeasureId
+        - trackedByBatch
+        - trackedBySerial
+        - trackedByExpiry
+      properties:
+        name:
+          type: string
+          description: Name of the product. Does not need to be unique per tenant.
+          minLength: 1
+          maxLength: 255
+          example: "Leche Entera 1L"
+        sku:
+          type: string
+          description: Stock Keeping Unit identifier. Must be unique per tenant. Allowed characters are uppercase letters, digits, and hyphens.
+          minLength: 1
+          maxLength: 100
+          pattern: "^[A-Z0-9][A-Z0-9\\-]*$"
+          example: "LECH-ENT-1L"
+        categoryId:
+          type: integer
+          format: int64
+          description: Identifier of the category for this product. Optional; if provided it must exist for the current tenant.
+          example: 10
+        unitOfMeasureId:
+          $ref: '../units/components.yml#/components/schemas/UnitOfMeasureId'
+        trackedByBatch:
+          type: boolean
+          description: Indicates whether the product is tracked by batch. Mutually exclusive with trackedBySerial.
+          example: true
+        trackedBySerial:
+          type: boolean
+          description: Indicates whether the product is tracked by serial number. Mutually exclusive with trackedByBatch.
+          example: false
+        trackedByExpiry:
+          type: boolean
+          description: Indicates whether the product is tracked by expiry date. Requires trackedByBatch to be true when set to true.
+          example: true
+        description:
+          type: string
+          description: Optional free-text description of the product.
+          maxLength: 500
+          example: "Leche entera pasteurizada de 1 litro"
+        barcodes:
+          type: array
+          description: >
+            Optional list of barcodes to associate with the product at creation time.
+            If provided, exactly one item must have isDefault set to true.
+            Each barcode value must be unique per tenant.
+          items:
+            $ref: '#/components/schemas/CreateProductBarcodeInput'
+
+    CreateProductBarcodeInput:
+      type: object
+      description: Barcode to be associated with a product at creation time.
+      required:
+        - barcode
+        - barcodeTypeId
+        - isDefault
+      properties:
+        barcode:
+          type: string
+          description: Barcode value. Must be unique per tenant.
+          minLength: 1
+          maxLength: 50
+          example: "8412345678901"
+        barcodeTypeId:
+          $ref: '../barcode/components.yml#/components/schemas/BarcodeTypeId'
+        isDefault:
+          type: boolean
+          description: Indicates whether this is the default barcode for the product. Exactly one barcode in the list must be true.
+          example: true
+
+    CreateProductResponse:
+      type: object
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Unique identifier for the created product.
+          example: 42
