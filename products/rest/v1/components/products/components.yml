@@ -9,6 +9,8 @@ components:
         - `trackedByExpiry: true` requires `trackedByBatch: true`.
         - If `barcodes` is provided, exactly one item must have `isDefault: true`.
         - Each barcode value must be unique per tenant.
+        - `imageUrl` and `imageKey` are optional and mutually exclusive. Sending both → 400.
+        - `imageKey` must reference an existing row in product_image (previously uploaded). Inexistent key → 404.
       required:
         - name
         - sku
@@ -54,6 +56,26 @@ components:
           description: Optional free-text description of the product.
           maxLength: 500
           example: "Leche entera pasteurizada de 1 litro"
+        additionalInformation:
+          type: string
+          description: Optional free-text field for any additional information about the product.
+          maxLength: 500
+          example: "Conservación entre 1°C y 4°C. No congelar."
+        imageUrl:
+          type: string
+          format: uri
+          description: >
+            URL of an external image (e.g. from a supplier CDN). Optional.
+            Mutually exclusive with imageKey — sending both returns 400.
+            A new row is inserted in product_image with source EXTERNAL.
+          example: "https://cdn.proveedor.com/leche-entera.jpg"
+        imageKey:
+          type: string
+          description: >
+            Key of a previously uploaded image (returned by POST /v1/products/images/upload). Optional.
+            Mutually exclusive with imageUrl — sending both returns 400.
+            References an existing row in product_image with source INTERNAL.
+          example: "tenant_uuid/products/abc123.jpg"
         barcodes:
           type: array
           description: >

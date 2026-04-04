@@ -7,6 +7,7 @@ post:
     The tenant is automatically resolved from the JWT token (claim: tenant_name).
     Requires role: store_admin.
     Barcodes are optional at creation time; if provided, exactly one must be marked as default.
+    Image is optional; provide either imageUrl (external) or imageKey (previously uploaded) — not both.
   operationId: createProduct
   requestBody:
     description: Data for creating a new product
@@ -15,19 +16,49 @@ post:
       application/json:
         schema:
           $ref: '../../components/products/components.yml#/components/schemas/CreateProductRequest'
-        example:
-          name: "Leche Entera 1L"
-          sku: "LECH-ENT-1L"
-          categoryId: 10
-          unitOfMeasureId: 1
-          trackedByBatch: true
-          trackedBySerial: false
-          trackedByExpiry: true
-          description: "Leche entera pasteurizada de 1 litro"
-          barcodes:
-            - barcode: "8412345678901"
-              barcodeTypeId: 1
-              isDefault: true
+        examples:
+          with_external_image:
+            summary: Product with external image URL
+            value:
+              name: "Leche Entera 1L"
+              sku: "LECH-ENT-1L"
+              categoryId: 10
+              unitOfMeasureId: 1
+              trackedByBatch: true
+              trackedBySerial: false
+              trackedByExpiry: true
+              description: "Leche entera pasteurizada de 1 litro"
+              additionalInformation: "Información adicional sobre la leche entera"
+              imageUrl: "https://cdn.proveedor.com/leche-entera.jpg"
+              barcodes:
+                - barcode: "8412345678901"
+                  barcodeTypeId: 1
+                  isDefault: true
+          with_uploaded_image:
+            summary: Product with previously uploaded image
+            value:
+              name: "Leche Entera 1L"
+              sku: "LECH-ENT-1L"
+              categoryId: 10
+              unitOfMeasureId: 1
+              trackedByBatch: true
+              trackedBySerial: false
+              trackedByExpiry: true
+              description: "Leche entera pasteurizada de 1 litro"
+              imageKey: "tenant_uuid/products/abc123.jpg"
+              barcodes:
+                - barcode: "8412345678901"
+                  barcodeTypeId: 1
+                  isDefault: true
+          minimal:
+            summary: Minimal product without image or barcodes
+            value:
+              name: "Leche Entera 1L"
+              sku: "LECH-ENT-1L"
+              unitOfMeasureId: 1
+              trackedByBatch: false
+              trackedBySerial: false
+              trackedByExpiry: false
   responses:
     '201':
       description: Product created successfully
