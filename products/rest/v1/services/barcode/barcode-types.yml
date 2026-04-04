@@ -1,24 +1,22 @@
 get:
   tags:
-    - Provisioning
-  summary: Get tenant provisioning status events
+    - Products
+  summary: Get product barcode types
   description: |
-    Returns the current state of the tenant provisioning process.
-  operationId: getTenantProvisioningStatus
+    Retrieves the available barcode type names for products.
+  operationId: getProductBarcodeTypes
   responses:
     '200':
-      description: Event stream established
+      description: Barcode type list retrieved successfully
       content:
         application/json:
           schema:
-            $ref: '../../components/provisioning/components.yml#/components/schemas/TenantProvisioningStatus'
+            $ref: '../../components/barcode/components.yml#/components/schemas/GetProductBarcodeTypesResponse'
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':
       $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
     '403':
       $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
-    '409':
-      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
     '500':
       $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

@@ -1,0 +1,22 @@
+components:
+  schemas:
+    GetProductBarcodeTypesResponse:
+      type: object
+      properties:
+        barcodeTypes:
+          type: array
+          description: List of available barcode types for products.
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/BarcodeTypeId'
+              name:
+                type: string
+                description: Name of the barcode type
+                example: "EAN-13"
+    BarcodeTypeId:
+      type: integer
+      format: int64
+      description: Identifier of the barcode type from products barcode types catalog
+      example: 1

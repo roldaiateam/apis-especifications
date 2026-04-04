@@ -1,24 +1,22 @@
 get:
   tags:
-    - Provisioning
-  summary: Get tenant provisioning status events
+    - Products
+  summary: Get all product units
   description: |
-    Returns the current state of the tenant provisioning process.
-  operationId: getTenantProvisioningStatus
+    Retrieves the available unit names for products.
+  operationId: getAllProductUnits
   responses:
     '200':
-      description: Event stream established
+      description: Unit list retrieved successfully
       content:
         application/json:
           schema:
-            $ref: '../../components/provisioning/components.yml#/components/schemas/TenantProvisioningStatus'
+            $ref: '../../components/units/components.yml#/components/schemas/GetProductUnitsResponse'
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':
       $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
     '403':
       $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
-    '409':
-      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
     '500':
       $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

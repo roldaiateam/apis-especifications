@@ -1,0 +1,57 @@
+components:
+  schemas:
+    CreateCategoryRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the category
+          minLength: 2
+          maxLength: 100
+          pattern: "^[A-Za-zÁÉÍÓÚáéíóúÑñ0-9 &.\\-]+$"
+          example: "Electronics"
+        description:
+          type: string
+          description: Description of the category
+          maxLength: 500
+          example: "All electronic devices and accessories"
+        parentCategoryId:
+          type: integer
+          format: int64
+          description: Identifier of the parent category for hierarchical classification
+          example: 1
+
+      required:
+        - name
+
+    CreateCategoryResponse:
+      type: object
+      properties:
+        categoryId:
+          type: integer
+          format: int64
+          description: Unique identifier for the created category
+          example: 42
+    GetCategoriesResponse:
+      type: object
+      properties:
+        categories:
+          type: array
+          description: List of categories available in the system for the tenant
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+    CategorySummary:
+      type: object
+      description: Summary information about a category, used for listing categories without detailed information
+      properties:
+        id:
+          $ref: '#/components/schemas/CategoryId'
+        name:
+          type: string
+          description: Name of the category
+          example: "Electronics"
+    CategoryId:
+      type: integer
+      format: int64
+      description: Unique identifier for the category
+      example: 42
