@@ -50,6 +50,10 @@ components:
           type: string
           description: Name of the category
           example: "Electronics"
+        description:
+          type: string
+          description: Description of the category
+          example: "All electronic devices and accessories"
     CategoryId:
       type: integer
       format: int64
