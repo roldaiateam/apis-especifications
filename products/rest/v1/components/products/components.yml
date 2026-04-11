@@ -43,7 +43,10 @@ components:
           description: Identifier of the category for this product. Optional; if provided it must exist for the current tenant.
           example: 10
         unitOfMeasureId:
-          $ref: '../units/components.yml#/components/schemas/UnitOfMeasureId'
+          type: integer
+          format: int64
+          description: Identifier of the unit of measure from products units of measure catalog.
+          example: 1
         trackedByBatch:
           type: boolean
           description: Indicates whether the product is tracked by batch. Mutually exclusive with trackedBySerial.
