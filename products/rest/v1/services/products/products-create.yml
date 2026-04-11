@@ -7,7 +7,8 @@ post:
     The tenant is automatically resolved from the JWT token (claim: tenant_name).
     Requires role: store_admin.
     Barcodes are optional at creation time; if provided, exactly one must be marked as default.
-    Image is optional; provide either imageUrl (external) or imageKey (previously uploaded) — not both.
+    Images are optional; each item must provide at least one of id (previously uploaded) or url (external).
+    If images are provided, exactly one must be marked as isMain.
   operationId: createProduct
   requestBody:
     description: Data for creating a new product
@@ -22,14 +23,18 @@ post:
             value:
               name: "Leche Entera 1L"
               sku: "LECH-ENT-1L"
+              brand: "Pascual"
               categoryId: 10
               unitOfMeasureId: 1
               trackedByBatch: true
               trackedBySerial: false
               trackedByExpiry: true
               description: "Leche entera pasteurizada de 1 litro"
-              additionalInformation: "Información adicional sobre la leche entera"
-              imageUrl: "https://cdn.proveedor.com/leche-entera.jpg"
+              additionalInformation: "Conservación entre 1°C y 4°C. No congelar."
+              images:
+                - url: "https://cdn.proveedor.com/leche-entera.jpg"
+                  isMain: true
+                  sortOrder: 0
               barcodes:
                 - barcode: "8412345678901"
                   barcodeTypeId: 1
@@ -39,19 +44,23 @@ post:
             value:
               name: "Leche Entera 1L"
               sku: "LECH-ENT-1L"
+              brand: "Pascual"
               categoryId: 10
               unitOfMeasureId: 1
               trackedByBatch: true
               trackedBySerial: false
               trackedByExpiry: true
               description: "Leche entera pasteurizada de 1 litro"
-              imageKey: "tenant_uuid/products/abc123.jpg"
+              images:
+                - id: 7
+                  isMain: true
+                  sortOrder: 0
               barcodes:
                 - barcode: "8412345678901"
                   barcodeTypeId: 1
                   isDefault: true
           minimal:
-            summary: Minimal product without image or barcodes
+            summary: Minimal product without images or barcodes
             value:
               name: "Leche Entera 1L"
               sku: "LECH-ENT-1L"
