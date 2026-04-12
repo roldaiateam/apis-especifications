@@ -19,7 +19,7 @@ components:
         - trackedBySerial
         - trackedByExpiry
         - sellPrice
-        - sellPriceCurrency
+        - sellPriceCurrencyId
       properties:
         name:
           type: string
@@ -103,11 +103,11 @@ components:
             This value is recorded in the product sell price history with source CREATE.
           minimum: 0.01
           example: 1.99
-        sellPriceCurrency:
-          type: string
-          description: ISO 4217 currency code for the sell price.
-          maxLength: 10
-          example: "EUR"
+        sellPriceCurrencyId:
+          type: integer
+          format: int32
+          description: ID of the supported currency from the supported currencies catalog (GET /v1/products/supported-currencies).
+          example: 2
 
     CreateProductImageInput:
       type: object
