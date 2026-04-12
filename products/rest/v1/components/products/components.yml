@@ -18,6 +18,8 @@ components:
         - trackedByBatch
         - trackedBySerial
         - trackedByExpiry
+        - sellPrice
+        - sellPriceCurrency
       properties:
         name:
           type: string
@@ -93,6 +95,19 @@ components:
             Each barcode value must be unique per tenant.
           items:
             $ref: '#/components/schemas/CreateProductBarcodeInput'
+        sellPrice:
+          type: number
+          format: double
+          description: >
+            Current sell price of the product. Must be greater than 0.
+            This value is recorded in the product sell price history with source CREATE.
+          minimum: 0.01
+          example: 1.99
+        sellPriceCurrency:
+          type: string
+          description: ISO 4217 currency code for the sell price.
+          maxLength: 10
+          example: "EUR"
 
     CreateProductImageInput:
       type: object

@@ -31,6 +31,8 @@ post:
               trackedByExpiry: true
               description: "Leche entera pasteurizada de 1 litro"
               additionalInformation: "Conservación entre 1°C y 4°C. No congelar."
+              sellPrice: 1.99
+              sellPriceCurrency: "EUR"
               images:
                 - url: "https://cdn.proveedor.com/leche-entera.jpg"
                   isMain: true
@@ -51,6 +53,8 @@ post:
               trackedBySerial: false
               trackedByExpiry: true
               description: "Leche entera pasteurizada de 1 litro"
+              sellPrice: 1.99
+              sellPriceCurrency: "EUR"
               images:
                 - id: 7
                   isMain: true
@@ -68,6 +72,8 @@ post:
               trackedByBatch: false
               trackedBySerial: false
               trackedByExpiry: false
+              sellPrice: 1.99
+              sellPriceCurrency: "EUR"
   responses:
     '201':
       description: Product created successfully
