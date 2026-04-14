@@ -82,7 +82,29 @@ post:
           schema:
             $ref: '../../components/products/components.yml#/components/schemas/CreateProductResponse'
     '400':
-      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+      description: Request contains incorrect syntax, invalid fields, or violated logical validation rules
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            validationError:
+              summary: Validation rule violation
+              value:
+                errorCode: BATCH_AND_SERIAL_EXCLUSIVE
+                errorMessage: Batch and Serial tracking are mutually exclusive
+            mainImageRequired:
+              summary: No image marked as main
+              value:
+                errorCode: PRODUCT_IMAGE_MAIN_REQUIRED
+                errorMessage: Product items must have at least one main image
+            internalImagesNotFound:
+              summary: One or more internal images referenced by ID do not exist
+              value:
+                errorCode: INTERNAL_IMAGES_NOT_FOUND
+                errorMessage: Internal images not found
+                details:
+                  ids: [10, 42, 99]
     '401':
       $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
     '403':
