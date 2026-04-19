@@ -1,0 +1,117 @@
+post:
+  tags:
+    - Products
+  summary: Create a new product
+  description: >
+    Creates a new product in the products catalog.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Barcodes are optional at creation time; if provided, exactly one must be marked as default.
+    Images are optional; each item must provide at least one of id (previously uploaded) or url (external).
+    If images are provided, exactly one must be marked as isMain.
+  operationId: createProduct
+  requestBody:
+    description: Data for creating a new product
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/products/components.yml#/components/schemas/CreateProductRequest'
+        examples:
+          with_external_image:
+            summary: Product with external image URL
+            value:
+              name: "Leche Entera 1L"
+              sku: "LECH-ENT-1L"
+              brand: "Pascual"
+              categoryId: 10
+              unitOfMeasureId: 1
+              trackedByBatch: true
+              trackedBySerial: false
+              trackedByExpiry: true
+              description: "Leche entera pasteurizada de 1 litro"
+              additionalInformation: "Conservación entre 1°C y 4°C. No congelar."
+              sellPrice: 1.99
+              sellPriceCurrencyId: 2
+              images:
+                - url: "https://cdn.proveedor.com/leche-entera.jpg"
+                  isMain: true
+                  sortOrder: 0
+              barcodes:
+                - barcode: "8412345678901"
+                  barcodeTypeId: 1
+                  isDefault: true
+          with_uploaded_image:
+            summary: Product with previously uploaded image
+            value:
+              name: "Leche Entera 1L"
+              sku: "LECH-ENT-1L"
+              brand: "Pascual"
+              categoryId: 10
+              unitOfMeasureId: 1
+              trackedByBatch: true
+              trackedBySerial: false
+              trackedByExpiry: true
+              description: "Leche entera pasteurizada de 1 litro"
+              sellPrice: 1.99
+              sellPriceCurrencyId: 2
+              images:
+                - id: 7
+                  isMain: true
+                  sortOrder: 0
+              barcodes:
+                - barcode: "8412345678901"
+                  barcodeTypeId: 1
+                  isDefault: true
+          minimal:
+            summary: Minimal product without images or barcodes
+            value:
+              name: "Leche Entera 1L"
+              sku: "LECH-ENT-1L"
+              unitOfMeasureId: 1
+              trackedByBatch: false
+              trackedBySerial: false
+              trackedByExpiry: false
+              sellPrice: 1.99
+              sellPriceCurrencyId: 2
+  responses:
+    '201':
+      description: Product created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/products/components.yml#/components/schemas/CreateProductResponse'
+    '400':
+      description: Request contains incorrect syntax, invalid fields, or violated logical validation rules
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            validationError:
+              summary: Validation rule violation
+              value:
+                errorCode: BATCH_AND_SERIAL_EXCLUSIVE
+                errorMessage: Batch and Serial tracking are mutually exclusive
+            mainImageRequired:
+              summary: No image marked as main
+              value:
+                errorCode: PRODUCT_IMAGE_MAIN_REQUIRED
+                errorMessage: Product items must have at least one main image
+            internalImagesNotFound:
+              summary: One or more internal images referenced by ID do not exist
+              value:
+                errorCode: INTERNAL_IMAGES_NOT_FOUND
+                errorMessage: Internal images not found
+                details:
+                  ids: [10, 42, 99]
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      $ref: '../../components/errors/components.yml#/components/responses/NotFound'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

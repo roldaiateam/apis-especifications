@@ -13,6 +13,13 @@ components:
           description: Error message
           example: "An error occurred"
           maxLength: 255
+        details:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: >
+            Optional structured metadata providing additional context about the error.
+            Present only when the error carries extra information (e.g. a list of missing entity IDs).
 
   responses:
     BadRequest:

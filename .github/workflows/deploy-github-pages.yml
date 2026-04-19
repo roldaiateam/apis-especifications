@@ -7,7 +7,7 @@ on:
     branches: [main, develop]
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -36,6 +36,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pyyaml
+
+      - name: Restore existing docs from gh-pages
+        run: |
+          if git ls-remote --heads origin gh-pages | grep -q .; then
+            echo "Restoring existing API docs from gh-pages..."
+            git fetch origin gh-pages --depth=1
+            git checkout FETCH_HEAD -- docs/apis 2>/dev/null \
+              || echo "No docs/apis in gh-pages yet (first run)"
+          else
+            echo "No gh-pages branch yet (first deployment)"
+          fi
+          mkdir -p docs/apis
 
       - name: Download published versions artifact
         uses: actions/download-artifact@v4
@@ -144,6 +156,36 @@ jobs:
         if: steps.check-artifact.outputs.has_versions == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Save updated docs to gh-pages
+        if: steps.check-artifact.outputs.has_versions == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+
+          if git ls-remote --heads origin gh-pages | grep -q .; then
+            git clone --branch gh-pages --depth=1 "$REPO_URL" /tmp/gh-pages
+          else
+            mkdir /tmp/gh-pages
+            cd /tmp/gh-pages
+            git init
+            git remote add origin "$REPO_URL"
+            git checkout --orphan gh-pages
+            cd -
+          fi
+
+          rm -rf /tmp/gh-pages/docs/apis
+          mkdir -p /tmp/gh-pages/docs
+          cp -r docs/apis /tmp/gh-pages/docs/
+
+          cd /tmp/gh-pages
+          git add docs/apis
+          if ! git diff --staged --quiet; then
+            git commit -m "docs: update API catalog [skip ci]"
+            git push origin gh-pages
+          fi
 
       - name: Output deployment URL
         if: steps.check-artifact.outputs.has_versions == 'true'
