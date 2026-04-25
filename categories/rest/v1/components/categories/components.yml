@@ -55,7 +55,6 @@ components:
         description:
           type: string
           description: Description of the category
-          nullable: true
           example: "All electronic devices and accessories"
 
     CategorySummary:
@@ -74,7 +73,6 @@ components:
         description:
           type: string
           description: Description of the category
-          nullable: true
           example: "All electronic devices and accessories"
         subcategories:
           type: array
