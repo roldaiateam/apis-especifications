@@ -1,0 +1,86 @@
+post:
+  tags:
+    - Products
+  summary: Upload a product image
+  description: >
+    Uploads an image file to the product image catalog.
+    The image is stored under the tenant's namespace with an auto-generated key
+    following the pattern `{tenantId}/products/{uuid}.{ext}`.
+    A new record is created in `product_image` with `source = INTERNAL`.
+
+
+    The returned `imageId` can then be used in `POST /v1/products` (field `images[].id`)
+    to associate this image with a product.
+
+
+    **Constraints:**
+    - Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`.
+    - Maximum file size: 5 MB.
+    - The tenant is resolved from the JWT token (`tenant_name` claim), never from the request body.
+    - Requires role: `store_admin`.
+  operationId: uploadProductImage
+  requestBody:
+    description: Image file to upload
+    required: true
+    content:
+      multipart/form-data:
+        schema:
+          type: object
+          required:
+            - file
+          properties:
+            file:
+              type: string
+              format: binary
+              description: >
+                The image file to upload. Must be one of: image/jpeg, image/png, image/webp.
+                Maximum size: 5 MB.
+        encoding:
+          file:
+            contentType: image/jpeg, image/png, image/webp
+  responses:
+    '201':
+      description: Image uploaded successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/images/components.yml#/components/schemas/UploadProductImageResponse'
+          examples:
+            jpeg:
+              summary: JPEG image uploaded
+              value:
+                imageId: 7
+                imageUrl: "https://storage.roldaia.internal/a1b2c3d4/products/f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg"
+            webp:
+              summary: WebP image uploaded
+              value:
+                imageId: 8
+                imageUrl: "https://storage.roldaia.internal/a1b2c3d4/products/c9bf9e57-1685-4c89-bafb-ff5af830be8a.webp"
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '413':
+      description: File size exceeds the 5 MB limit
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          example:
+            errorCode: "IMAGE_FILE_TOO_LARGE"
+            errorMessage: "The uploaded file exceeds the maximum allowed size of 5 MB"
+            details: null
+    '415':
+      description: Unsupported media type — only image/jpeg, image/png, and image/webp are accepted
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          example:
+            errorCode: "UNSUPPORTED_IMAGE_FORMAT"
+            errorMessage: "The uploaded file type is not supported. Accepted types: image/jpeg, image/png, image/webp"
+            details: null
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
