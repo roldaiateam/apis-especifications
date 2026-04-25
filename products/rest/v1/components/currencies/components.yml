@@ -1,0 +1,38 @@
+components:
+  schemas:
+    GetSupportedCurrenciesResponse:
+      type: object
+      properties:
+        supportedCurrencies:
+          type: array
+          description: List of available supported currencies for products.
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/SupportedCurrency"
+    SupportedCurrency:
+      type: object
+      description: Information about a supported currency, used for listing available currencies
+      properties:
+        id:
+          $ref: '#/components/schemas/SupportedCurrencyId'
+        code:
+          type: string
+          description: ISO 4217 currency code
+          example: "USD"
+          minLength: 3
+          maxLength: 3
+        name:
+          type: string
+          description: Full name of the currency
+          example: "US Dollar"
+          maxLength: 100
+        symbol:
+          type: string
+          description: Symbol representing the currency
+          example: "$"
+          maxLength: 5
+    SupportedCurrencyId:
+      type: integer
+      format: int64
+      description: Identifier of the supported currency from the supported currencies catalog
+      example: 1

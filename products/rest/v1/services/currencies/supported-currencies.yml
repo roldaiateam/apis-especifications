@@ -1,0 +1,23 @@
+get:
+  tags:
+    - Products
+  summary: Get all supported currencies
+  description: |
+    Retrieves the available supported currencies for products.
+    These values are used to populate the currency selector when creating or updating a product.
+  operationId: getAllSupportedCurrencies
+  responses:
+    '200':
+      description: Supported currencies list retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/currencies/components.yml#/components/schemas/GetSupportedCurrenciesResponse'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
