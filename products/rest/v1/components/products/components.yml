@@ -169,3 +169,169 @@ components:
           format: int64
           description: Unique identifier for the created product.
           example: 42
+
+    # ──────────────────────────────────────────────
+    # Search Products schemas
+    # ──────────────────────────────────────────────
+
+    SearchProductsRequest:
+      type: object
+      description: >
+        Search criteria and pagination parameters for querying products.
+        All filter fields are optional. When omitted, no filter is applied for that field.
+        Results are paginated using limit/offset.
+      properties:
+        filters:
+          $ref: '#/components/schemas/ProductSearchFilters'
+        limit:
+          type: integer
+          format: int32
+          description: Maximum number of items to return. Must be between 1 and 100.
+          minimum: 1
+          maximum: 100
+          default: 20
+          example: 20
+        offset:
+          type: integer
+          format: int32
+          description: Number of items to skip before starting to return results.
+          minimum: 0
+          default: 0
+          example: 0
+        sortBy:
+          type: string
+          description: Field name to sort results by.
+          enum:
+            - name
+            - sku
+            - brand
+            - sellPrice
+            - createdAt
+            - updatedAt
+          default: createdAt
+          example: "name"
+        sortDirection:
+          type: string
+          description: Sort direction.
+          enum:
+            - asc
+            - desc
+          default: asc
+          example: "asc"
+
+    ProductSearchFilters:
+      type: object
+      description: >
+        Optional filter criteria for searching products.
+        All fields are optional — omit a field to skip that filter.
+      properties:
+        name:
+          type: string
+          description: Partial match on product name (case-insensitive).
+          maxLength: 255
+          example: "Leche"
+        sku:
+          type: string
+          description: Partial match on product SKU (case-insensitive).
+          maxLength: 100
+          example: "LECH"
+        brand:
+          type: string
+          description: Partial match on product brand (case-insensitive).
+          maxLength: 100
+          example: "Pascual"
+        categoryId:
+          type: integer
+          format: int64
+          description: Filter by category identifier.
+          example: 10
+        active:
+          type: boolean
+          description: Filter by active status.
+          example: true
+        unitOfMeasureId:
+          type: integer
+          format: int64
+          description: Filter by unit of measure identifier.
+          example: 1
+
+    SearchProductsResponse:
+      type: object
+      description: Paginated search results for products.
+      properties:
+        data:
+          type: array
+          description: List of products matching the search criteria for the current page.
+          items:
+            $ref: '#/components/schemas/ProductSummary'
+        pagination:
+          $ref: '#/components/schemas/PaginationMetadata'
+
+    ProductSummary:
+      type: object
+      description: Lightweight representation of a product for search result listings.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the product.
+          example: 42
+        sku:
+          type: string
+          description: Stock Keeping Unit identifier.
+          maxLength: 100
+          example: "LECH-ENT-1L"
+        name:
+          type: string
+          description: Name of the product.
+          maxLength: 255
+          example: "Leche Entera 1L"
+        brand:
+          type: string
+          description: Brand of the product.
+          maxLength: 100
+          example: "Pascual"
+        active:
+          type: boolean
+          description: Whether the product is currently active.
+          example: true
+        category:
+          type: string
+          description: Name of the product category.
+          maxLength: 255
+          example: "Lácteos"
+        sellPrice:
+          type: number
+          format: double
+          description: Current sell price of the product.
+          example: 1.99
+        mainImage:
+          type: string
+          format: uri
+          description: URL of the main product image. Null if no image is assigned.
+          maxLength: 2048
+          example: "https://cdn.example.com/images/leche-entera.jpg"
+
+    PaginationMetadata:
+      type: object
+      description: Pagination information for the current result set.
+      properties:
+        limit:
+          type: integer
+          format: int32
+          description: Maximum number of items per page.
+          example: 20
+        offset:
+          type: integer
+          format: int32
+          description: Number of items skipped.
+          example: 0
+        total:
+          type: integer
+          format: int64
+          description: Total number of items matching the search criteria.
+          example: 150
+        hasMore:
+          type: boolean
+          description: Whether there are more results beyond the current page.
+          example: true

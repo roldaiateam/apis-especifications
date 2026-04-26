@@ -36,6 +36,8 @@ paths:
     $ref: './v1/services/units/units.yml'
   /v1/products/supported-currencies:
     $ref: './v1/services/currencies/supported-currencies.yml'
+  /v1/products/search:
+    $ref: './v1/services/products/products-search.yml'
   /v1/products/images:
     $ref: './v1/services/images/product-images-upload.yml'
 
