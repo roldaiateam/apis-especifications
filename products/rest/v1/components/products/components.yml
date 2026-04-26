@@ -352,11 +352,11 @@ components:
           format: int64
           description: Unique identifier of the category.
           example: 10
-        code:
+        name:
           type: string
-          description: Code of the category.
+          description: Name of the category.
           maxLength: 100
-          example: "LACTEOS"
+          example: "Lácteos"
 
     ProductUnitOfMeasureSummary:
       type: object

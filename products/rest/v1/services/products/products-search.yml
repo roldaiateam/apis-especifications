@@ -65,7 +65,7 @@ post:
                     active: true
                     category:
                       id: 10
-                      code: "LACTEOS"
+                      name: "LACTEOS"
                     unitOfMeasure:
                       id: 1
                       code: "LT"
@@ -78,7 +78,7 @@ post:
                     active: true
                     category:
                       id: 10
-                      code: "LACTEOS"
+                      name: "LACTEOS"
                     unitOfMeasure:
                       id: 1
                       code: "LT"
