@@ -55,7 +55,10 @@ post:
               value:
                 page: 0
                 size: 10
+                totalItems: 25
+                totalPages: 3
                 hasNext: true
+                hasPrevious: false
                 items:
                   - id: 42
                     sku: "LECH-ENT-1L"
@@ -88,7 +91,10 @@ post:
               value:
                 page: 0
                 size: 20
+                totalItems: 0
+                totalPages: 0
                 hasNext: false
+                hasPrevious: false
                 items: []
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'

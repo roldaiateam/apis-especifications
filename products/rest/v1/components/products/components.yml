@@ -283,10 +283,24 @@ components:
           format: int32
           description: Number of items per page.
           example: 20
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of items matching the search criteria.
+          example: 150
+        totalPages:
+          type: integer
+          format: int32
+          description: Total number of pages available.
+          example: 8
         hasNext:
           type: boolean
-          description: Whether there are more results beyond the current page.
+          description: Whether there is a next page.
           example: true
+        hasPrevious:
+          type: boolean
+          description: Whether there is a previous page.
+          example: false
         items:
           type: array
           description: List of products matching the search criteria for the current page.
