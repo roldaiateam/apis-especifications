@@ -21,8 +21,8 @@ post:
               filters:
                 name: "Leche"
                 active: true
-              limit: 10
-              offset: 0
+              page: 0
+              size: 10
               sortBy: "name"
               sortDirection: "asc"
           filterByCategoryAndBrand:
@@ -31,13 +31,13 @@ post:
               filters:
                 categoryId: 10
                 brand: "Pascual"
-              limit: 20
-              offset: 0
+              page: 0
+              size: 20
           noFilters:
             summary: Get first page of all products
             value:
-              limit: 20
-              offset: 0
+              page: 0
+              size: 20
           emptyBody:
             summary: Default search (empty body)
             value: {}
@@ -70,8 +70,8 @@ post:
                     sellPrice: 1.89
                     mainImage: "https://cdn.example.com/images/leche-desnatada.jpg"
                 pagination:
-                  limit: 10
-                  offset: 0
+                  page: 0
+                  size: 10
                   total: 25
                   hasMore: true
             emptyResults:
@@ -79,8 +79,8 @@ post:
               value:
                 data: []
                 pagination:
-                  limit: 20
-                  offset: 0
+                  page: 0
+                  size: 20
                   total: 0
                   hasMore: false
     '400':

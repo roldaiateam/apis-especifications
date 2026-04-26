@@ -179,25 +179,25 @@ components:
       description: >
         Search criteria and pagination parameters for querying products.
         All filter fields are optional. When omitted, no filter is applied for that field.
-        Results are paginated using limit/offset.
+        Results are paginated using page/size.
       properties:
         filters:
           $ref: '#/components/schemas/ProductSearchFilters'
-        limit:
+        page:
           type: integer
           format: int32
-          description: Maximum number of items to return. Must be between 1 and 100.
+          description: Zero-based page index. The first page is 0.
+          minimum: 0
+          default: 0
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page. Must be between 1 and 100.
           minimum: 1
           maximum: 100
           default: 20
           example: 20
-        offset:
-          type: integer
-          format: int32
-          description: Number of items to skip before starting to return results.
-          minimum: 0
-          default: 0
-          example: 0
         sortBy:
           type: string
           description: Field name to sort results by.
@@ -316,16 +316,16 @@ components:
       type: object
       description: Pagination information for the current result set.
       properties:
-        limit:
+        page:
           type: integer
           format: int32
-          description: Maximum number of items per page.
-          example: 20
-        offset:
-          type: integer
-          format: int32
-          description: Number of items skipped.
+          description: Current page index (zero-based).
           example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page.
+          example: 20
         total:
           type: integer
           format: int64
