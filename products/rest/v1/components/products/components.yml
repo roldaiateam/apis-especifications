@@ -262,11 +262,15 @@ components:
           type: boolean
           description: Filter by active status.
           example: true
-        unitOfMeasureId:
-          type: integer
-          format: int64
-          description: Filter by unit of measure identifier.
-          example: 1
+        unitOfMeasureIds:
+          type: array
+          description: Filter by one or more unit of measure IDs. Matches products with any of the specified units.
+          items:
+            type: integer
+            format: int64
+            description: Unit of measure identifier.
+            example: 1
+          example: [1, 3]
 
     SearchProductsResponse:
       type: object
