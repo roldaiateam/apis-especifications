@@ -19,7 +19,7 @@ post:
             summary: Search with name filter and pagination
             value:
               filters:
-                name: "Leche"
+                keyword: "Leche"
                 active: true
               page: 0
               size: 10
@@ -30,8 +30,8 @@ post:
             summary: Search by category and brand
             value:
               filters:
+                keyword: "Pascual"
                 categoryId: 10
-                brand: "Pascual"
               page: 0
               size: 20
           noFilters:

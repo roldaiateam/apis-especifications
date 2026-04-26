@@ -21,24 +21,13 @@ components:
         - sellPrice
         - sellPriceCurrencyId
       properties:
-        name:
+        keyword:
           type: string
-          description: Name of the product. Does not need to be unique per tenant.
-          minLength: 1
+          description: >
+            Free-text search term. Performs a case-insensitive partial match (ILIKE)
+            across product name, SKU, and brand fields.
           maxLength: 255
-          example: "Leche Entera 1L"
-        sku:
-          type: string
-          description: Stock Keeping Unit identifier. Must be unique per tenant. Allowed characters are uppercase letters, digits, and hyphens.
-          minLength: 1
-          maxLength: 100
-          pattern: "^[A-Z0-9][A-Z0-9\\-]*$"
-          example: "LECH-ENT-1L"
-        brand:
-          type: string
-          description: Brand of the product. Optional.
-          maxLength: 100
-          example: "Pascual"
+          example: "Leche"
         categoryId:
           type: integer
           format: int64
