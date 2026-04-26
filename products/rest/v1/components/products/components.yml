@@ -293,14 +293,6 @@ components:
           format: int64
           description: Total number of items matching the search criteria.
           example: 15
-        hasNext:
-          type: boolean
-          description: Whether there is a next page.
-          example: true
-        hasPrevious:
-          type: boolean
-          description: Whether there is a previous page.
-          example: false
         items:
           type: array
           description: List of products matching the search criteria for the current page.
