@@ -53,7 +53,10 @@ post:
             withResults:
               summary: Page with results
               value:
-                data:
+                page: 0
+                size: 10
+                hasNext: true
+                items:
                   - id: 42
                     sku: "LECH-ENT-1L"
                     name: "Leche Entera 1L"
@@ -70,20 +73,13 @@ post:
                     category: "Lácteos"
                     sellPrice: 1.89
                     mainImage: "https://cdn.example.com/images/leche-desnatada.jpg"
-                pagination:
-                  page: 0
-                  size: 10
-                  total: 25
-                  hasMore: true
             emptyResults:
               summary: No matching results
               value:
-                data: []
-                pagination:
-                  page: 0
-                  size: 20
-                  total: 0
-                  hasMore: false
+                page: 0
+                size: 20
+                hasNext: false
+                items: []
     '400':
       $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
     '401':

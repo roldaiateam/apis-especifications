@@ -273,13 +273,25 @@ components:
       type: object
       description: Paginated search results for products.
       properties:
-        data:
+        page:
+          type: integer
+          format: int32
+          description: Current page index (zero-based).
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page.
+          example: 20
+        hasNext:
+          type: boolean
+          description: Whether there are more results beyond the current page.
+          example: true
+        items:
           type: array
           description: List of products matching the search criteria for the current page.
           items:
             $ref: '#/components/schemas/ProductSummary'
-        pagination:
-          $ref: '#/components/schemas/PaginationMetadata'
 
     ProductSummary:
       type: object
@@ -326,26 +338,3 @@ components:
           maxLength: 2048
           example: "https://cdn.example.com/images/leche-entera.jpg"
 
-    PaginationMetadata:
-      type: object
-      description: Pagination information for the current result set.
-      properties:
-        page:
-          type: integer
-          format: int32
-          description: Current page index (zero-based).
-          example: 0
-        size:
-          type: integer
-          format: int32
-          description: Number of items per page.
-          example: 20
-        total:
-          type: integer
-          format: int64
-          description: Total number of items matching the search criteria.
-          example: 150
-        hasMore:
-          type: boolean
-          description: Whether there are more results beyond the current page.
-          example: true
