@@ -277,22 +277,22 @@ components:
           type: integer
           format: int32
           description: Current page index (zero-based).
-          example: 0
+          example: 1
         size:
           type: integer
           format: int32
           description: Number of items per page.
-          example: 20
-        totalItems:
-          type: integer
-          format: int64
-          description: Total number of items matching the search criteria.
-          example: 150
+          example: 3
         totalPages:
           type: integer
           format: int32
           description: Total number of pages available.
-          example: 8
+          example: 5
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of items matching the search criteria.
+          example: 15
         hasNext:
           type: boolean
           description: Whether there is a next page.
