@@ -21,13 +21,24 @@ components:
         - sellPrice
         - sellPriceCurrencyId
       properties:
-        keyword:
+        name:
           type: string
-          description: >
-            Free-text search term. Performs a case-insensitive partial match (ILIKE)
-            across product name, SKU, and brand fields.
+          description: Name of the product. Does not need to be unique per tenant.
+          minLength: 1
           maxLength: 255
-          example: "Leche"
+          example: "Leche Entera 1L"
+        sku:
+          type: string
+          description: Stock Keeping Unit identifier. Must be unique per tenant. Allowed characters are uppercase letters, digits, and hyphens.
+          minLength: 1
+          maxLength: 100
+          pattern: "^[A-Z0-9][A-Z0-9\\-]*$"
+          example: "LECH-ENT-1L"
+        brand:
+          type: string
+          description: Brand of the product. Optional.
+          maxLength: 100
+          example: "Pascual"
         categoryId:
           type: integer
           format: int64
@@ -169,6 +180,9 @@ components:
         Search criteria and pagination parameters for querying products.
         All filter fields are optional. When omitted, no filter is applied for that field.
         Results are paginated using page/size.
+      required:
+        - page
+        - size
       properties:
         filters:
           $ref: '#/components/schemas/ProductSearchFilters'
@@ -228,21 +242,13 @@ components:
         Optional filter criteria for searching products.
         All fields are optional — omit a field to skip that filter.
       properties:
-        name:
+        keyword:
           type: string
-          description: Partial match on product name (case-insensitive).
+          description: >
+            Free-text search term. Performs a case-insensitive partial match (ILIKE)
+            across product name, SKU, and brand fields.
           maxLength: 255
           example: "Leche"
-        sku:
-          type: string
-          description: Partial match on product SKU (case-insensitive).
-          maxLength: 100
-          example: "LECH"
-        brand:
-          type: string
-          description: Partial match on product brand (case-insensitive).
-          maxLength: 100
-          example: "Pascual"
         categoryIds:
           type: array
           description: Filter by one or more category IDs. Matches products that belong to any of the specified categories.
