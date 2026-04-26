@@ -254,11 +254,15 @@ components:
           description: Partial match on product brand (case-insensitive).
           maxLength: 100
           example: "Pascual"
-        categoryId:
-          type: integer
-          format: int64
-          description: Filter by category identifier.
-          example: 10
+        categoryIds:
+          type: array
+          description: Filter by one or more category IDs. Matches products that belong to any of the specified categories.
+          items:
+            type: integer
+            format: int64
+            description: Filter by category identifier.
+            example: 10
+          example: [10, 15]
         active:
           type: boolean
           description: Filter by active status.
