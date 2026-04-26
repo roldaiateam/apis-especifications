@@ -1,0 +1,23 @@
+components:
+  schemas:
+    UploadProductImageResponse:
+      type: object
+      description: Response returned after successfully uploading a product image.
+      properties:
+        imageId:
+          type: integer
+          format: int64
+          description: Unique identifier of the created image record in the product_image catalog. Use this ID to reference the image when creating or updating a product.
+          example: 7
+        imageUrl:
+          type: string
+          format: uri
+          description: Publicly resolvable URL of the uploaded image.
+          maxLength: 2048
+          example: "https://storage.roldaia.internal/a1b2c3d4/products/f47ac10b-58cc-4372-a567-0e02b2c3d479.jpg"
+
+    ProductImageId:
+      type: integer
+      format: int64
+      description: Unique identifier for a product image
+      example: 7
