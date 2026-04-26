@@ -39,27 +39,9 @@ components:
           items:
             $ref: '#/components/schemas/CategorySummary'
 
-    CategoryBasic:
-      type: object
-      description: Basic category information without nested subcategories
-      required:
-        - id
-        - name
-      properties:
-        id:
-          $ref: '#/components/schemas/CategoryId'
-        name:
-          type: string
-          description: Name of the category
-          example: "Electronics"
-        description:
-          type: string
-          description: Description of the category
-          example: "All electronic devices and accessories"
-
     CategorySummary:
       type: object
-      description: Summary information about a category with one level of subcategories
+      description: Category with nested subcategories (recursive structure)
       required:
         - id
         - name
@@ -76,20 +58,55 @@ components:
           example: "All electronic devices and accessories"
         subcategories:
           type: array
-          description: Subcategories of the category
+          description: Nested subcategories (recursive)
           items:
-            $ref: "#/components/schemas/CategoryBasic"
+            $ref: '#/components/schemas/CategorySummary'
           default: []
           example:
-            - id: 2
-              name: "Headphones"
-              description: "Audio devices"
-            - id: 3
-              name: "Smartphones"
-              description: "Mobile devices"
+            categories:
+              - id: 1
+                name: "Electronics"
+                description: "All electronic devices and accessories"
+                subcategories:
+                  - id: 2
+                    name: "Computers"
+                    description: "Computing devices"
+                    subcategories:
+                      - id: 3
+                        name: "Laptops"
+                        description: "Portable computers"
+                        subcategories:
+                          - id: 4
+                            name: "Gaming Laptops"
+                            description: "High performance laptops for gaming"
+                            subcategories: [ ]
+                          - id: 5
+                            name: "Ultrabooks"
+                            description: "Lightweight laptops"
+                            subcategories: [ ]
+                      - id: 6
+                        name: "Desktops"
+                        description: "Desktop computers"
+                        subcategories: [ ]
+                  - id: 7
+                    name: "Mobile Devices"
+                    description: "Phones and tablets"
+                    subcategories:
+                      - id: 8
+                        name: "Smartphones"
+                        description: "Mobile phones"
+                        subcategories:
+                          - id: 9
+                            name: "Android Phones"
+                            description: "Android-based smartphones"
+                            subcategories: [ ]
+                          - id: 10
+                            name: "iPhones"
+                            description: "Apple smartphones"
+                            subcategories: [ ]
 
     CategoryId:
       type: integer
       format: int64
       description: Unique identifier for the category
-      example: 42
+      example: 11
