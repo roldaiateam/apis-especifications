@@ -322,10 +322,9 @@ components:
           description: Whether the product is currently active.
           example: true
         category:
-          type: string
-          description: Name of the product category.
-          maxLength: 255
-          example: "Lácteos"
+          $ref: '#/components/schemas/ProductCategorySummary'
+        unitOfMeasure:
+          $ref: '#/components/schemas/ProductUnitOfMeasureSummary'
         sellPrice:
           type: number
           format: double
@@ -337,4 +336,34 @@ components:
           description: URL of the main product image. Null if no image is assigned.
           maxLength: 2048
           example: "https://cdn.example.com/images/leche-entera.jpg"
+
+    ProductCategorySummary:
+      type: object
+      description: Lightweight representation of a product category.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the category.
+          example: 10
+        code:
+          type: string
+          description: Code of the category.
+          maxLength: 100
+          example: "LACTEOS"
+
+    ProductUnitOfMeasureSummary:
+      type: object
+      description: Lightweight representation of a unit of measure.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the unit of measure.
+          example: 1
+        code:
+          type: string
+          description: Code of the unit of measure.
+          maxLength: 50
+          example: "LT"
 

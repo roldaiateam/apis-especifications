@@ -62,7 +62,12 @@ post:
                     name: "Leche Entera 1L"
                     brand: "Pascual"
                     active: true
-                    category: "Lácteos"
+                    category:
+                      id: 10
+                      code: "LACTEOS"
+                    unitOfMeasure:
+                      id: 1
+                      code: "LT"
                     sellPrice: 1.99
                     mainImage: "https://cdn.example.com/images/leche-entera.jpg"
                   - id: 43
@@ -70,7 +75,12 @@ post:
                     name: "Leche Desnatada 1L"
                     brand: "Pascual"
                     active: true
-                    category: "Lácteos"
+                    category:
+                      id: 10
+                      code: "LACTEOS"
+                    unitOfMeasure:
+                      id: 1
+                      code: "LT"
                     sellPrice: 1.89
                     mainImage: "https://cdn.example.com/images/leche-desnatada.jpg"
             emptyResults:
