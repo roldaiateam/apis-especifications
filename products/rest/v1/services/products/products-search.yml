@@ -23,8 +23,9 @@ post:
                 active: true
               page: 0
               size: 10
-              sortBy: "name"
-              sortDirection: "asc"
+              sort:
+                - field: "name"
+                  direction: "ASC"
           filterByCategoryAndBrand:
             summary: Search by category and brand
             value:

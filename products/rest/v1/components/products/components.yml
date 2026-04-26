@@ -198,9 +198,25 @@ components:
           maximum: 100
           default: 20
           example: 20
-        sortBy:
+        sort:
+          type: array
+          description: List of sort criteria to apply in order. Each item specifies a field and direction.
+          items:
+            $ref: '#/components/schemas/SortCriteria'
+          example:
+            - field: "name"
+              direction: "ASC"
+
+    SortCriteria:
+      type: object
+      description: A single sort criterion specifying a field and direction.
+      required:
+        - field
+        - direction
+      properties:
+        field:
           type: string
-          description: Field name to sort results by.
+          description: Field name to sort by.
           enum:
             - name
             - sku
@@ -208,16 +224,14 @@ components:
             - sellPrice
             - createdAt
             - updatedAt
-          default: createdAt
           example: "name"
-        sortDirection:
+        direction:
           type: string
           description: Sort direction.
           enum:
-            - asc
-            - desc
-          default: asc
-          example: "asc"
+            - ASC
+            - DESC
+          example: "ASC"
 
     ProductSearchFilters:
       type: object
