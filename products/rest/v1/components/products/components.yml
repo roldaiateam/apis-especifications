@@ -335,16 +335,39 @@ components:
         unitOfMeasure:
           $ref: '#/components/schemas/ProductUnitOfMeasureSummary'
         sellPrice:
-          type: number
-          format: double
-          description: Current sell price of the product.
-          example: 1.99
+          $ref: '#/components/schemas/ProductSellPriceSummary'
         mainImage:
           type: string
           format: uri
           description: URL of the main product image. Null if no image is assigned.
           maxLength: 2048
           example: "https://cdn.example.com/images/leche-entera.jpg"
+    ProductSellPriceSummary:
+      type: object
+      description: Current sell price with currency information.
+      properties:
+        amount:
+          type: number
+          format: double
+          description: Sell price amount.
+          example: 1.99
+        currency:
+          $ref: '#/components/schemas/ProductCurrencySummary'
+
+    ProductCurrencySummary:
+      type: object
+      description: Lightweight representation of a currency.
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique identifier of the currency.
+          example: 2
+        code:
+          type: string
+          description: ISO 4217 currency code.
+          maxLength: 3
+          example: "EUR"
 
     ProductCategorySummary:
       type: object

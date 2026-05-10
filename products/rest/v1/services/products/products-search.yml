@@ -69,7 +69,11 @@ post:
                     unitOfMeasure:
                       id: 1
                       code: "LT"
-                    sellPrice: 1.99
+                    sellPrice:
+                      amount: 1.99
+                      currency:
+                        id: 2
+                        code: "EUR"
                     mainImage: "https://cdn.example.com/images/leche-entera.jpg"
                   - id: 43
                     sku: "LECH-DES-1L"
@@ -78,11 +82,15 @@ post:
                     active: true
                     category:
                       id: 10
-                      name: "LACTEOS"
+                      code: "LACTEOS"
                     unitOfMeasure:
                       id: 1
                       code: "LT"
-                    sellPrice: 1.89
+                    sellPrice:
+                      amount: 1.89
+                      currency:
+                        id: 2
+                        code: "EUR"
                     mainImage: "https://cdn.example.com/images/leche-desnatada.jpg"
             emptyResults:
               summary: No matching results
