@@ -169,3 +169,210 @@ components:
           format: int64
           description: Unique identifier for the created product.
           example: 42
+
+    # ──────────────────────────────────────────────
+    # Search Products schemas
+    # ──────────────────────────────────────────────
+
+    SearchProductsRequest:
+      type: object
+      description: >
+        Search criteria and pagination parameters for querying products.
+        All filter fields are optional. When omitted, no filter is applied for that field.
+        Results are paginated using page/size.
+      required:
+        - page
+        - size
+      properties:
+        filters:
+          $ref: '#/components/schemas/ProductSearchFilters'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page index. The first page is 0.
+          minimum: 0
+          default: 0
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page. Must be between 1 and 100.
+          minimum: 1
+          maximum: 100
+          default: 20
+          example: 20
+        sort:
+          type: array
+          description: List of sort criteria to apply in order. Each item specifies a field and direction.
+          items:
+            $ref: '#/components/schemas/SortCriteria'
+          example:
+            - field: "name"
+              direction: "ASC"
+
+    SortCriteria:
+      type: object
+      description: A single sort criterion specifying a field and direction.
+      required:
+        - field
+        - direction
+      properties:
+        field:
+          type: string
+          description: Field name to sort by.
+          enum:
+            - name
+            - sku
+            - brand
+            - sellPrice
+            - createdAt
+            - updatedAt
+          example: "name"
+        direction:
+          type: string
+          description: Sort direction.
+          enum:
+            - ASC
+            - DESC
+          example: "ASC"
+
+    ProductSearchFilters:
+      type: object
+      description: >
+        Optional filter criteria for searching products.
+        All fields are optional — omit a field to skip that filter.
+      properties:
+        keyword:
+          type: string
+          description: >
+            Free-text search term. Performs a case-insensitive partial match (ILIKE)
+            across product name, SKU, and brand fields.
+          maxLength: 255
+          example: "Leche"
+        categoryIds:
+          type: array
+          description: Filter by one or more category IDs. Matches products that belong to any of the specified categories.
+          items:
+            type: integer
+            format: int64
+            description: Filter by category identifier.
+            example: 10
+          example: [10, 15]
+        active:
+          type: boolean
+          description: Filter by active status.
+          example: true
+        unitOfMeasureIds:
+          type: array
+          description: Filter by one or more unit of measure IDs. Matches products with any of the specified units.
+          items:
+            type: integer
+            format: int64
+            description: Unit of measure identifier.
+            example: 1
+          example: [1, 3]
+
+    SearchProductsResponse:
+      type: object
+      description: Paginated search results for products.
+      properties:
+        page:
+          type: integer
+          format: int32
+          description: Current page index (zero-based).
+          example: 1
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page.
+          example: 3
+        totalPages:
+          type: integer
+          format: int32
+          description: Total number of pages available.
+          example: 5
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of items matching the search criteria.
+          example: 15
+        items:
+          type: array
+          description: List of products matching the search criteria for the current page.
+          items:
+            $ref: '#/components/schemas/ProductSummary'
+
+    ProductSummary:
+      type: object
+      description: Lightweight representation of a product for search result listings.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the product.
+          example: 42
+        sku:
+          type: string
+          description: Stock Keeping Unit identifier.
+          maxLength: 100
+          example: "LECH-ENT-1L"
+        name:
+          type: string
+          description: Name of the product.
+          maxLength: 255
+          example: "Leche Entera 1L"
+        brand:
+          type: string
+          description: Brand of the product.
+          maxLength: 100
+          example: "Pascual"
+        active:
+          type: boolean
+          description: Whether the product is currently active.
+          example: true
+        category:
+          $ref: '#/components/schemas/ProductCategorySummary'
+        unitOfMeasure:
+          $ref: '#/components/schemas/ProductUnitOfMeasureSummary'
+        sellPrice:
+          type: number
+          format: double
+          description: Current sell price of the product.
+          example: 1.99
+        mainImage:
+          type: string
+          format: uri
+          description: URL of the main product image. Null if no image is assigned.
+          maxLength: 2048
+          example: "https://cdn.example.com/images/leche-entera.jpg"
+
+    ProductCategorySummary:
+      type: object
+      description: Lightweight representation of a product category.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the category.
+          example: 10
+        name:
+          type: string
+          description: Name of the category.
+          maxLength: 100
+          example: "Lácteos"
+
+    ProductUnitOfMeasureSummary:
+      type: object
+      description: Lightweight representation of a unit of measure.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the unit of measure.
+          example: 1
+        code:
+          type: string
+          description: Code of the unit of measure.
+          maxLength: 50
+          example: "LT"
+

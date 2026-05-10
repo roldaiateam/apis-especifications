@@ -1,0 +1,102 @@
+post:
+  tags:
+    - Products
+  summary: Search products with filters
+  description: >
+    Searches products using optional filter criteria with paginated results.
+    The tenant is automatically resolved from the JWT token.
+    All filter fields are optional. When no filters are provided, all products for the tenant are returned.
+  operationId: searchProducts
+  requestBody:
+    description: Search criteria and pagination parameters
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/products/components.yml#/components/schemas/SearchProductsRequest'
+        examples:
+          withFilters:
+            summary: Search with name filter and pagination
+            value:
+              filters:
+                keyword: "Leche"
+                active: true
+              page: 0
+              size: 10
+              sort:
+                - field: "name"
+                  direction: "ASC"
+          filterByCategoryAndBrand:
+            summary: Search by category and brand
+            value:
+              filters:
+                keyword: "Pascual"
+                categoryId: 10
+              page: 0
+              size: 20
+          noFilters:
+            summary: Get first page of all products
+            value:
+              page: 0
+              size: 20
+          emptyBody:
+            summary: Default search (empty body)
+            value: {}
+  responses:
+    '200':
+      description: Search results retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/products/components.yml#/components/schemas/SearchProductsResponse'
+          examples:
+            withResults:
+              summary: Page with results
+              value:
+                page: 1
+                size: 3
+                totalPages: 5
+                totalItems: 15
+                items:
+                  - id: 42
+                    sku: "LECH-ENT-1L"
+                    name: "Leche Entera 1L"
+                    brand: "Pascual"
+                    active: true
+                    category:
+                      id: 10
+                      name: "LACTEOS"
+                    unitOfMeasure:
+                      id: 1
+                      code: "LT"
+                    sellPrice: 1.99
+                    mainImage: "https://cdn.example.com/images/leche-entera.jpg"
+                  - id: 43
+                    sku: "LECH-DES-1L"
+                    name: "Leche Desnatada 1L"
+                    brand: "Pascual"
+                    active: true
+                    category:
+                      id: 10
+                      name: "LACTEOS"
+                    unitOfMeasure:
+                      id: 1
+                      code: "LT"
+                    sellPrice: 1.89
+                    mainImage: "https://cdn.example.com/images/leche-desnatada.jpg"
+            emptyResults:
+              summary: No matching results
+              value:
+                page: 0
+                size: 20
+                totalPages: 0
+                totalItems: 0
+                items: []
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
