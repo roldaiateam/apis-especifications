@@ -275,6 +275,12 @@ components:
     SearchProductsResponse:
       type: object
       description: Paginated search results for products.
+      required:
+        - page
+        - size
+        - totalPages
+        - totalItems
+        - items
       properties:
         page:
           type: integer
@@ -305,6 +311,12 @@ components:
     ProductSummary:
       type: object
       description: Lightweight representation of a product for search result listings.
+      required:
+        - id
+        - sku
+        - name
+        - active
+        - unitOfMeasure
       properties:
         id:
           type: integer
