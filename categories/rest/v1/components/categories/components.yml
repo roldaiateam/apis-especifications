@@ -38,6 +38,20 @@ components:
           description: List of categories available in the system for the tenant
           items:
             $ref: '#/components/schemas/CategorySummary'
+      example:
+        categories:
+          - id: 1
+            name: "Electronics"
+            description: "All electronic devices and accessories"
+            subcategories:
+              - id: 2
+                name: "Computers"
+                description: "Computing devices"
+                subcategories:
+                  - id: 3
+                    name: "Laptops"
+                    description: "Portable computers"
+                    subcategories: [ ]
 
     CategorySummary:
       type: object
@@ -62,48 +76,6 @@ components:
           items:
             $ref: '#/components/schemas/CategorySummary'
           default: []
-          example:
-            categories:
-              - id: 1
-                name: "Electronics"
-                description: "All electronic devices and accessories"
-                subcategories:
-                  - id: 2
-                    name: "Computers"
-                    description: "Computing devices"
-                    subcategories:
-                      - id: 3
-                        name: "Laptops"
-                        description: "Portable computers"
-                        subcategories:
-                          - id: 4
-                            name: "Gaming Laptops"
-                            description: "High performance laptops for gaming"
-                            subcategories: [ ]
-                          - id: 5
-                            name: "Ultrabooks"
-                            description: "Lightweight laptops"
-                            subcategories: [ ]
-                      - id: 6
-                        name: "Desktops"
-                        description: "Desktop computers"
-                        subcategories: [ ]
-                  - id: 7
-                    name: "Mobile Devices"
-                    description: "Phones and tablets"
-                    subcategories:
-                      - id: 8
-                        name: "Smartphones"
-                        description: "Mobile phones"
-                        subcategories:
-                          - id: 9
-                            name: "Android Phones"
-                            description: "Android-based smartphones"
-                            subcategories: [ ]
-                          - id: 10
-                            name: "iPhones"
-                            description: "Apple smartphones"
-                            subcategories: [ ]
 
     CategoryId:
       type: integer
