@@ -21,9 +21,6 @@ components:
           description: Identifier of the parent category for hierarchical classification
           example: 1
 
-      required:
-        - name
-
     CreateCategoryResponse:
       type: object
       properties:
@@ -32,6 +29,7 @@ components:
           format: int64
           description: Unique identifier for the created category
           example: 42
+
     GetCategoriesResponse:
       type: object
       properties:
@@ -40,9 +38,27 @@ components:
           description: List of categories available in the system for the tenant
           items:
             $ref: '#/components/schemas/CategorySummary'
+      example:
+        categories:
+          - id: 1
+            name: "Electronics"
+            description: "All electronic devices and accessories"
+            subcategories:
+              - id: 2
+                name: "Computers"
+                description: "Computing devices"
+                subcategories:
+                  - id: 3
+                    name: "Laptops"
+                    description: "Portable computers"
+                    subcategories: [ ]
+
     CategorySummary:
       type: object
-      description: Summary information about a category, used for listing categories without detailed information
+      description: Category with nested subcategories (recursive structure)
+      required:
+        - id
+        - name
       properties:
         id:
           $ref: '#/components/schemas/CategoryId'
@@ -50,8 +66,19 @@ components:
           type: string
           description: Name of the category
           example: "Electronics"
+        description:
+          type: string
+          description: Description of the category
+          example: "All electronic devices and accessories"
+        subcategories:
+          type: array
+          description: Nested subcategories (recursive)
+          items:
+            $ref: '#/components/schemas/CategorySummary'
+          default: []
+
     CategoryId:
       type: integer
       format: int64
       description: Unique identifier for the category
-      example: 42
+      example: 11
