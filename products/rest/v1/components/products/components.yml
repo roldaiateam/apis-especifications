@@ -411,3 +411,236 @@ components:
           maxLength: 50
           example: "LT"
 
+    # ──────────────────────────────────────────────
+    # Get Product (detail) schemas
+    # ──────────────────────────────────────────────
+
+    ProductDetailResponse:
+      type: object
+      description: >
+        Full representation of a product including category, unit of measure,
+        tracking configuration, current sell price, images and barcodes.
+      required:
+        - id
+        - sku
+        - name
+        - active
+        - unitOfMeasure
+        - trackingConfig
+        - createdAt
+        - lastUpdateAt
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the product.
+          example: 1
+        sku:
+          type: string
+          description: Stock Keeping Unit identifier. Unique per tenant.
+          maxLength: 100
+          example: "SKU-001"
+        name:
+          type: string
+          description: Name of the product.
+          maxLength: 255
+          example: "Producto ejemplo"
+        brand:
+          type: string
+          description: Brand of the product. Optional.
+          maxLength: 100
+          example: "Marca X"
+        description:
+          type: string
+          description: Optional free-text description of the product.
+          maxLength: 500
+          example: "Descripción del producto"
+        additionalInformation:
+          type: string
+          description: Optional free-text field for any additional information about the product.
+          maxLength: 500
+          example: "Información adicional"
+        active:
+          type: boolean
+          description: Whether the product is currently active.
+          example: true
+        parentId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Identifier of the parent product (for variants/composites). Null if it is a root product.
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the product was created.
+          example: "2026-04-19T10:00:00Z"
+        lastUpdateAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the last update to the product.
+          example: "2026-04-19T10:30:00Z"
+        category:
+          $ref: '#/components/schemas/ProductCategoryDetail'
+        unitOfMeasure:
+          $ref: '#/components/schemas/ProductUnitOfMeasureDetail'
+        trackingConfig:
+          $ref: '#/components/schemas/ProductTrackingConfig'
+        sellPrice:
+          $ref: '#/components/schemas/ProductSellPriceSummary'
+        images:
+          type: array
+          description: List of images associated with the product, ordered by sortOrder ascending.
+          items:
+            $ref: '#/components/schemas/ProductImageDetail'
+        barcodes:
+          type: array
+          description: List of barcodes associated with the product. Exactly one item will have isDefault set to true.
+          items:
+            $ref: '#/components/schemas/ProductBarcodeDetail'
+
+    ProductCategoryDetail:
+      type: object
+      description: Detailed representation of a product category.
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the category.
+          example: 1
+        name:
+          type: string
+          description: Name of the category.
+          maxLength: 100
+          example: "Frescos"
+        description:
+          type: string
+          description: Optional description of the category.
+          maxLength: 500
+          example: "Productos frescos"
+
+    ProductUnitOfMeasureDetail:
+      type: object
+      description: Detailed representation of a unit of measure.
+      required:
+        - id
+        - code
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the unit of measure.
+          example: 1
+        code:
+          type: string
+          description: Code of the unit of measure.
+          maxLength: 50
+          example: "UNIT"
+        description:
+          type: string
+          description: Description of the unit of measure.
+          maxLength: 255
+          example: "Unidad"
+
+    ProductTrackingConfig:
+      type: object
+      description: >
+        Tracking configuration for the product. Business rules:
+        - trackedByBatch and trackedBySerial are mutually exclusive.
+        - trackedByExpiry requires trackedByBatch.
+      required:
+        - trackedByBatch
+        - trackedBySerial
+        - trackedByExpiry
+      properties:
+        trackedByBatch:
+          type: boolean
+          description: Whether the product is tracked by batch.
+          example: false
+        trackedBySerial:
+          type: boolean
+          description: Whether the product is tracked by serial number.
+          example: false
+        trackedByExpiry:
+          type: boolean
+          description: Whether the product is tracked by expiry date. Only true when trackedByBatch is true.
+          example: false
+
+    ProductImageDetail:
+      type: object
+      description: Detailed representation of a product image.
+      required:
+        - id
+        - url
+        - isMain
+        - sortOrder
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the image record.
+          example: 1
+        url:
+          type: string
+          format: uri
+          description: URL where the image is hosted (internal storage or external).
+          maxLength: 2048
+          example: "https://storage.example.com/products/img1.jpg"
+        isMain:
+          type: boolean
+          description: Whether this is the main image of the product. Exactly one image is main.
+          example: true
+        sortOrder:
+          type: integer
+          format: int32
+          description: Display order of the image (0 = first).
+          minimum: 0
+          example: 1
+
+    ProductBarcodeDetail:
+      type: object
+      description: Detailed representation of a product barcode.
+      required:
+        - id
+        - barcode
+        - barcodeType
+        - isDefault
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the barcode record.
+          example: 1
+        barcode:
+          type: string
+          description: Barcode value (EAN, UPC, QR, etc.). Unique per tenant.
+          maxLength: 50
+          example: "8412345678901"
+        barcodeType:
+          $ref: '#/components/schemas/ProductBarcodeTypeSummary'
+        isDefault:
+          type: boolean
+          description: Whether this is the default barcode of the product. Exactly one barcode is default.
+          example: true
+
+    ProductBarcodeTypeSummary:
+      type: object
+      description: Lightweight representation of a barcode type.
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the barcode type.
+          example: 1
+        name:
+          type: string
+          description: Name of the barcode type (e.g. EAN13, UPC, QR).
+          maxLength: 50
+          example: "EAN13"
+

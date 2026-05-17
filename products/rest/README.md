@@ -5,6 +5,7 @@ OpenAPI contract for product management endpoints.
 ## Endpoints
 
 - `POST /v1/products`: Create a new product for the current tenant.
+- `GET /v1/products/{productId}`: Retrieve a product detail (category, unit of measure, tracking config, sell price, images and barcodes) for the current tenant.
 - `GET /v1/products/barcode-types`: Retrieve available barcode type names.
 
 ## Notes

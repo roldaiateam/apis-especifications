@@ -1,0 +1,101 @@
+get:
+  tags:
+    - Products
+  summary: Get a product by ID
+  description: >
+    Retrieves the full detail of a product belonging to the current tenant.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Returns the product with category, unit of measure, tracking configuration,
+    current sell price, images (ordered by sortOrder) and barcodes (one marked as default).
+    Returns 404 if the product does not exist or does not belong to the current tenant.
+  operationId: getProduct
+  parameters:
+    - name: productId
+      in: path
+      required: true
+      description: Unique identifier of the product to retrieve.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 1
+  responses:
+    '200':
+      description: Product detail retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/products/components.yml#/components/schemas/ProductDetailResponse'
+          examples:
+            fullProduct:
+              summary: Product with all relations resolved
+              value:
+                id: 1
+                sku: "SKU-001"
+                name: "Producto ejemplo"
+                brand: "Marca X"
+                description: "Descripción del producto"
+                additionalInformation: "Información adicional"
+                active: true
+                parentId: null
+                createdAt: "2026-04-19T10:00:00Z"
+                lastUpdateAt: "2026-04-19T10:30:00Z"
+                category:
+                  id: 1
+                  name: "Frescos"
+                  description: "Productos frescos"
+                unitOfMeasure:
+                  id: 1
+                  code: "UNIT"
+                  description: "Unidad"
+                trackingConfig:
+                  trackedByBatch: false
+                  trackedBySerial: false
+                  trackedByExpiry: false
+                sellPrice:
+                  amount: 9.99
+                  currency:
+                    id: 2
+                    code: "EUR"
+                images:
+                  - id: 1
+                    url: "https://storage.example.com/products/img1.jpg"
+                    isMain: true
+                    sortOrder: 1
+                barcodes:
+                  - id: 1
+                    barcode: "8412345678901"
+                    barcodeType:
+                      id: 1
+                      name: "EAN13"
+                    isDefault: true
+    '400':
+      description: The productId path parameter is invalid (not a positive integer)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            invalidProductId:
+              summary: Invalid productId
+              value:
+                errorCode: VALIDATION_ERROR
+                errorMessage: productId must be a positive integer
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      description: Product does not exist or does not belong to the current tenant
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            productNotFound:
+              summary: Product not found
+              value:
+                errorCode: PRODUCT_NOT_FOUND
+                errorMessage: Product does not exist for current tenant
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
