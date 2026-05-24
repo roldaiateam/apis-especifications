@@ -21,7 +21,7 @@ components:
           example: "Tienda Centro Madrid"
         locationTypeId:
           type: integer
-          format: int32
+          format: int16
           description: >
             Identifier of the location type. FK to location_types.
             MVP allows only STORE (1) and STORE_WAREHOUSE (2).
@@ -71,7 +71,7 @@ components:
       properties:
         id:
           type: integer
-          format: int32
+          format: int16
           description: Unique numeric identifier for the location type.
           example: 1
         name:
