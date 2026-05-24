@@ -20,8 +20,8 @@ servers:
     description: PRO
 
 tags:
-  - name: MovementTypes
-    description: Operations about MovementTypes management
+  - name: Inventory
+    description: Operations about inventory management and movement types
 
 security:
   - basicAuth: []
