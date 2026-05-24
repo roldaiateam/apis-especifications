@@ -1,6 +1,6 @@
 get:
   tags:
-    - MovementTypes
+    - Inventory
   summary: Get all movement types
   description: >
     Retrieves a list of all movement types available in the system
