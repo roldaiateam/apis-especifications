@@ -21,9 +21,13 @@ inventory/rest/
     ├── components/
     │   ├── errors/
     │   │   └── components.yml # Standard error responses
+    │   ├── location-types/
+    │   │   └── components.yml # Request/Response schemas
     │   └── movement-types/
     │       └── components.yml # Request/Response schemas
     └── services/
+        ├── location-types/
+        │   └── location-types-get-all.yml  # GET /v1/inventory/location-types endpoint
         └── movement-types/
             └── movement-types-get-all.yml  # GET /v1/inventory/movement-types endpoint
 ```
@@ -35,11 +39,19 @@ inventory/rest/
 The **version in `openapi-rest.yml` → `info.version` is the SINGLE SOURCE OF TRUTH**.
 The CI/CD workflow automatically reads this version and synchronizes the Maven POM before building and publishing.
 
-Current version: **0.0.1**
+Current version: **0.0.2**
 
 ---
 
 ## API Endpoints
+
+### GET /v1/inventory/location-types
+Retrieves a list of all location types.
+
+**Response (200):** `LocationTypeListResponse`
+- List of LocationType entities (id: int32, name: string)
+
+**Error Responses:** 401, 403, 500
 
 ### GET /v1/inventory/movement-types
 Retrieves a list of all movement types.

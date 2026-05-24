@@ -1,0 +1,21 @@
+get:
+  tags:
+    - Inventory
+  summary: Get all location types
+  description: >
+    Retrieves a list of all location types available in the system
+    (e.g., STORE, STORE_WAREHOUSE, WAREHOUSE).
+  operationId: getLocationTypes
+  responses:
+    '200':
+      description: List of location types retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/location-types/components.yml#/components/schemas/LocationTypeListResponse'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
