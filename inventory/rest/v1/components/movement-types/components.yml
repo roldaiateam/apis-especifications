@@ -8,9 +8,9 @@ components:
           type: array
           description: List of movement types
           items:
-            $ref: '#/components/schemas/MovementType'
+            $ref: '#/components/schemas/MovementTypeDTO'
 
-    MovementType:
+    MovementTypeDTO:
       type: object
       description: Domain entity representing a type of inventory movement (e.g. IN, OUT, ADJUSTMENT)
       required:
