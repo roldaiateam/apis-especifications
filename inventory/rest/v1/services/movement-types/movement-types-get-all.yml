@@ -1,0 +1,21 @@
+get:
+  tags:
+    - Inventory
+  summary: Get all movement types
+  description: >
+    Retrieves a list of all movement types available in the system
+    (e.g., IN, OUT, ADJUSTMENT, TRANSFER, COMPENSATION).
+  operationId: getMovementTypes
+  responses:
+    '200':
+      description: List of movement types retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movement-types/components.yml#/components/schemas/MovementTypeListResponse'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

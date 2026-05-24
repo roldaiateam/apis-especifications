@@ -1,0 +1,33 @@
+components:
+  schemas:
+    MovementTypeListResponse:
+      type: object
+      description: Response containing a list of all movement types
+      properties:
+        movementTypes:
+          type: array
+          description: List of movement types
+          items:
+            $ref: '#/components/schemas/MovementTypeDTO'
+
+    MovementTypeDTO:
+      type: object
+      description: Domain entity representing a type of inventory movement (e.g. IN, OUT, ADJUSTMENT)
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/MovementTypeId'
+        name:
+          type: string
+          description: Code or name of the movement type (e.g., IN, OUT, ADJUSTMENT, TRANSFER, COMPENSATION)
+          minLength: 1
+          maxLength: 255
+          example: "IN"
+
+    MovementTypeId:
+      type: integer
+      format: int32
+      description: Unique numeric identifier for the movement type
+      example: 1
