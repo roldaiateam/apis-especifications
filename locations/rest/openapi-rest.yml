@@ -1,0 +1,42 @@
+openapi: 3.0.3
+
+info:
+  title: Locations API
+  description: Locations management and location types
+  contact:
+    name: Proactive Devs team
+    email: proactivedevs@gmail.com
+    url: 'http://proactivedevs.com'
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:8090/mic-locations
+    description: Localhost
+  - url: https://proactivedevs-template-des/mic-locations
+    description: DES
+  - url: https://proactivedevs-template-pre/mic-locations
+    description: PRE
+  - url: https://proactivedevs-template-prod/mic-locations
+    description: PRO
+
+tags:
+  - name: LocationTypes
+    description: Operations about LocationTypes management
+
+security:
+  - basicAuth: []
+  - bearerAuth: []
+
+paths:
+  /v1/locations/location-types:
+    $ref: './v1/services/location-types/location-types-get-all.yml'
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

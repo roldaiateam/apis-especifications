@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 0.0.2
+  version: 0.0.1
 
 servers:
   - url: http://localhost:8090/mic-inventory
@@ -30,8 +30,6 @@ security:
 paths:
   /v1/inventory/movement-types:
     $ref: './v1/services/movement-types/movement-types-get-all.yml'
-  /v1/inventory/location-types:
-    $ref: './v1/services/location-types/location-types-get-all.yml'
 
 components:
   securitySchemes:
