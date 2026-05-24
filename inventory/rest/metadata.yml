@@ -1,0 +1,42 @@
+---
+api-spec-type: rest
+
+api:
+  name: Inventory REST API
+  version: 0.0.1
+  description: >
+    Inventory management and movement types.
+  maintainer:
+    name: Andres Reinaldo Cid
+    email: andresrc345@gmail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  basePath: /api/inventory
+  contact:
+    name: Roldaia Team
+    email: roldaiateam@gmail.com
+  documentation:
+    url: ./README.md
+
+openapi:
+  spec-version: 3.0.3
+  spec-file: openapi-rest.yml
+  format: openapi
+
+codegen:
+  package-prefix: com.proactivedevs.contracts.inventory.rest.v1
+  model-package: com.proactivedevs.contracts.inventory.rest.v1.model
+
+generators:
+  mvn:
+    enabled: true
+    package_name: com.proactivedevs.contracts.inventory.rest.v1
+    artifact_id_override: null
+  npm:
+    enabled: false
+    package_name: "@proactivedevs/contracts-inventory-rest"
+  go:
+    enabled: false
+  python:
+    enabled: false

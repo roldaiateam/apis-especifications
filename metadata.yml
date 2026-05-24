@@ -21,3 +21,6 @@ apis:
   - name: "Products REST API"
     api-spec-type: rest
     definition-path: products/rest
+  - name: "Inventory REST API"
+    api-spec-type: rest
+    definition-path: inventory/rest
