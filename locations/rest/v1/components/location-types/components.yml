@@ -1,0 +1,33 @@
+components:
+  schemas:
+    LocationTypeListResponse:
+      type: object
+      description: Response containing a list of all location types
+      properties:
+        locationTypes:
+          type: array
+          description: List of location types
+          items:
+            $ref: '#/components/schemas/LocationTypeDTO'
+
+    LocationTypeDTO:
+      type: object
+      description: Domain entity representing a type of inventory location (e.g. STORE, STORE_WAREHOUSE, WAREHOUSE)
+      required:
+        - id
+        - name
+      properties:
+        id:
+          $ref: '#/components/schemas/LocationTypeId'
+        name:
+          type: string
+          description: Code or name of the location type (e.g., STORE, STORE_WAREHOUSE, WAREHOUSE)
+          minLength: 1
+          maxLength: 255
+          example: "STORE"
+
+    LocationTypeId:
+      type: integer
+      format: int32
+      description: Unique numeric identifier for the location type
+      example: 1

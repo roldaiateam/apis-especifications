@@ -24,3 +24,6 @@ apis:
   - name: "Inventory REST API"
     api-spec-type: rest
     definition-path: inventory/rest
+  - name: "Locations REST API"
+    api-spec-type: rest
+    definition-path: locations/rest

@@ -1,19 +1,19 @@
-# Inventory REST API
+# Locations REST API
 
-OpenAPI contract for inventory management endpoints.
+OpenAPI contract for locations management endpoints.
 
 ## Overview
 
-This contract defines the **Inventory REST API** specification using OpenAPI 3.0.3.
+This contract defines the **Locations REST API** specification using OpenAPI 3.0.3.
 It is published as a Maven artifact to GitHub Packages and can be consumed by microservices
-that need to interact with inventory operations.
+that need to interact with locations operations.
 
 ---
 
 ## Structure
 
 ```
-inventory/rest/
+locations/rest/
 ├── openapi-rest.yml           # Main OpenAPI spec (VERSION SOURCE OF TRUTH)
 ├── metadata.yml               # Contract metadata (api-spec-type: rest)
 ├── README.md                  # This file
@@ -21,11 +21,11 @@ inventory/rest/
     ├── components/
     │   ├── errors/
     │   │   └── components.yml # Standard error responses
-    │   └── movement-types/
+    │   └── location-types/
     │       └── components.yml # Request/Response schemas
     └── services/
-        └── movement-types/
-            └── movement-types-get-all.yml  # GET /v1/inventory/movement-types endpoint
+        └── location-types/
+            └── location-types-get-all.yml  # GET /v1/locations/location-types endpoint
 ```
 
 ---
@@ -41,19 +41,11 @@ Current version: **0.0.1**
 
 ## API Endpoints
 
-### GET /v1/inventory/movement-types
-Retrieves a list of all movement types.
+### GET /v1/locations/location-types
+Retrieves a list of all location types.
 
-**Response (200):** `MovementTypeListResponse`
-- List of MovementType entities (id: int32, name: string)
-
-**Error Responses:** 401, 403, 500
-
----
-Retrieves a list of all movement types.
-
-**Response (200):** `MovementTypeListResponse`
-- List of MovementType entities (id: int32, name: string)
+**Response (200):** `LocationTypeListResponse`
+- List of LocationType entities (id: int32, name: string)
 
 **Error Responses:** 401, 403, 500
 
@@ -66,7 +58,7 @@ This contract is published to GitHub Packages as:
 ```xml
 <dependency>
     <groupId>com.proactivedevs.contracts</groupId>
-    <artifactId>inventory-rest-stable</artifactId>
+    <artifactId>locations-rest-stable</artifactId>
     <version>X.Y.Z</version>
 </dependency>
 ```
