@@ -1,6 +1,6 @@
 get:
   tags:
-    - LocationTypes
+    - Locations
   summary: Get all location types
   description: >
     Retrieves a list of all location types available in the system

@@ -20,8 +20,8 @@ servers:
     description: PRO
 
 tags:
-  - name: LocationTypes
-    description: Operations about LocationTypes management
+  - name: Locations
+    description: Operations about locations management
 
 security:
   - basicAuth: []
