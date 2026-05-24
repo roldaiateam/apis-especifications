@@ -8,9 +8,9 @@ components:
           type: array
           description: List of location types
           items:
-            $ref: '#/components/schemas/LocationType'
+            $ref: '#/components/schemas/LocationTypeDTO'
 
-    LocationType:
+    LocationTypeDTO:
       type: object
       description: Domain entity representing a type of inventory location (e.g. STORE, STORE_WAREHOUSE, WAREHOUSE)
       required:
