@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 0.0.1
+  version: 0.0.3
 
 servers:
   - url: http://localhost:8090/mic-locations
@@ -30,6 +30,8 @@ security:
 paths:
   /v1/locations/location-types:
     $ref: './v1/services/location-types/location-types-get-all.yml'
+  /v1/locations:
+    $ref: './v1/services/locations/locations-create.yml'
 
 components:
   securitySchemes:

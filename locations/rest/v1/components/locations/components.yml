@@ -1,0 +1,82 @@
+components:
+  schemas:
+    CreateLocationRequest:
+      type: object
+      description: >
+        Request payload for creating a new location.
+        The tenant is automatically resolved from the JWT token (claim: tenant_name).
+        The location name must be unique within the tenant.
+        In MVP, only locationTypeId 1 (STORE) and 2 (STORE_WAREHOUSE) are allowed.
+      required:
+        - name
+        - locationTypeId
+        - latitude
+        - longitude
+      properties:
+        name:
+          type: string
+          description: Name of the location. Must be unique per tenant.
+          minLength: 1
+          maxLength: 200
+          example: "Tienda Centro Madrid"
+        locationTypeId:
+          type: integer
+          format: int32
+          description: >
+            Identifier of the location type. FK to location_types.
+            MVP allows only STORE (1) and STORE_WAREHOUSE (2).
+            WAREHOUSE (3) is reserved for future use.
+          example: 1
+        address:
+          type: string
+          description: Physical address of the location.
+          maxLength: 500
+          example: "Gran Vía 25, 28013 Madrid"
+        description:
+          type: string
+          description: Optional free-text description of the location.
+          maxLength: 1000
+          example: "Tienda principal"
+        latitude:
+          type: number
+          format: double
+          description: Geographic latitude of the location in decimal degrees (WGS84).
+          minimum: -90
+          maximum: 90
+          example: 40.4168
+        longitude:
+          type: number
+          format: double
+          description: Geographic longitude of the location in decimal degrees (WGS84).
+          minimum: -180
+          maximum: 180
+          example: -3.7038
+
+    CreateLocationResponse:
+      type: object
+      description: Response containing the unique identifier of the newly created location.
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique identifier for the created location.
+          example: 5
+
+    LocationTypeSummary:
+      type: object
+      description: Lightweight representation of a location type.
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int32
+          description: Unique numeric identifier for the location type.
+          example: 1
+        name:
+          type: string
+          description: Name or code of the location type (e.g., STORE, STORE_WAREHOUSE, WAREHOUSE).
+          minLength: 1
+          maxLength: 255
+          example: "STORE"

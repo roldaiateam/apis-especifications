@@ -1,0 +1,54 @@
+post:
+  tags:
+    - Locations
+  summary: Create a new location
+  description: >
+    Creates a new location for the current tenant.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    In MVP, only locationTypeId 1 (STORE) and 2 (STORE_WAREHOUSE) are allowed.
+    Geographic coordinates (latitude, longitude) are stored in PostGIS using WGS84 (SRID 4326).
+  operationId: createLocation
+  requestBody:
+    description: Data for creating a new location
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/locations/components.yml#/components/schemas/CreateLocationRequest'
+        examples:
+          standard:
+            summary: Location with all fields
+            value:
+              name: "Tienda Centro Madrid"
+              locationTypeId: 1
+              address: "Gran Vía 25, 28013 Madrid"
+              description: "Tienda principal"
+              latitude: 40.4168
+              longitude: -3.7038
+          minimal:
+            summary: Location with only required fields
+            value:
+              name: "Almacén Norte"
+              locationTypeId: 2
+              latitude: 43.2630
+              longitude: -2.9340
+  responses:
+    '201':
+      description: Location created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/locations/components.yml#/components/schemas/CreateLocationResponse'
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      $ref: '../../components/errors/components.yml#/components/responses/NotFound'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
