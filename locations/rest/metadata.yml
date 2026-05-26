@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Locations REST API
-  version: 0.0.1
+  version: 0.0.3
   description: >
     Locations management and location types.
   maintainer:

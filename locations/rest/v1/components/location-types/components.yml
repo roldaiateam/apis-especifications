@@ -28,6 +28,6 @@ components:
 
     LocationTypeId:
       type: integer
-      format: int32
+      format: int16
       description: Unique numeric identifier for the location type
       example: 1

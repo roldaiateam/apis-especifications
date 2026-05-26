@@ -32,8 +32,13 @@ components:
             validationError:
               summary: Validation rule violation
               value:
-                errorCode: VALIDATION_ERROR
-                errorMessage: Invalid request parameters
+                errorCode: LOCATION_VALIDATION
+                errorMessage: Invalid location fields
+            locationTypeNotAllowedInMvp:
+              summary: Location type not allowed in MVP
+              value:
+                errorCode: LOCATION_TYPE_NOT_ALLOWED_IN_MVP
+                errorMessage: Location type WAREHOUSE is not allowed in MVP
     Unauthorized:
       description: JWT is missing or invalid
       content:
@@ -63,6 +68,11 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
           examples:
+            locationTypeNotFound:
+              summary: Location type does not exist
+              value:
+                errorCode: LOCATION_TYPE_NOT_FOUND
+                errorMessage: Location type does not exist for current tenant
             notFound:
               value:
                 errorCode: MOVEMENT_TYPE_NOT_FOUND
@@ -74,6 +84,11 @@ components:
           schema:
             $ref: '#/components/schemas/ApiErrorResponse'
           examples:
+            locationNameDuplicated:
+              summary: Location name already exists
+              value:
+                errorCode: LOCATION_NAME_DUPLICATED
+                errorMessage: Location name already exists for current tenant
             conflict:
               value:
                 errorCode: MOVEMENT_TYPE_ALREADY_EXISTS

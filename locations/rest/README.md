@@ -21,11 +21,15 @@ locations/rest/
     ├── components/
     │   ├── errors/
     │   │   └── components.yml # Standard error responses
-    │   └── location-types/
-    │       └── components.yml # Request/Response schemas
+    │   ├── location-types/
+    │   │   └── components.yml # Location type schemas
+    │   └── locations/
+    │       └── components.yml # Location request/response schemas
     └── services/
-        └── location-types/
-            └── location-types-get-all.yml  # GET /v1/locations/location-types endpoint
+        ├── location-types/
+        │   └── location-types-get-all.yml  # GET /v1/locations/location-types
+        └── locations/
+            └── locations-create.yml        # POST /v1/locations
 ```
 
 ---
@@ -35,7 +39,7 @@ locations/rest/
 The **version in `openapi-rest.yml` → `info.version` is the SINGLE SOURCE OF TRUTH**.
 The CI/CD workflow automatically reads this version and synchronizes the Maven POM before building and publishing.
 
-Current version: **0.0.1**
+Current version: **0.0.2**
 
 ---
 
@@ -48,6 +52,20 @@ Retrieves a list of all location types.
 - List of LocationType entities (id: int32, name: string)
 
 **Error Responses:** 401, 403, 500
+
+### POST /v1/locations
+Creates a new location for the current tenant. Requires `store_admin` role.
+
+**Request:** `CreateLocationRequest`
+- `name` (string, required, 1-200): Location name. Must be unique per tenant.
+- `locationTypeId` (int32, required): FK to location_types. MVP: STORE(1), STORE_WAREHOUSE(2).
+- `address` (string, optional, max 500): Physical address.
+- `description` (string, optional, max 1000): Optional description.
+
+**Response (201):** `CreateLocationResponse`
+- `id` (int32): Unique identifier of the created location.
+
+**Error Responses:** 400 (LOCATION_VALIDATION, LOCATION_TYPE_NOT_ALLOWED_IN_MVP), 401, 403, 404 (LOCATION_TYPE_NOT_FOUND), 409 (LOCATION_NAME_DUPLICATED), 500
 
 ---
 
