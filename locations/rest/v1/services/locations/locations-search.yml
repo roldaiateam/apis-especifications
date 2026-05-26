@@ -1,0 +1,89 @@
+post:
+  tags:
+    - Locations
+  summary: Search locations with filters
+  description: >
+    Searches locations for the current tenant using optional filter criteria with paginated results.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    All filter fields are optional. When no filters are provided, all locations for the tenant are returned.
+    Results include geographic coordinates (latitude, longitude) stored in PostGIS using WGS84 (SRID 4326).
+  operationId: searchLocations
+  requestBody:
+    description: Search criteria and pagination parameters
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/locations/components.yml#/components/schemas/SearchLocationsRequest'
+        examples:
+          withFilters:
+            summary: Search with keyword, location type and active filter
+            value:
+              filters:
+                keyword: "Madrid"
+                locationTypeId: 1
+                active: true
+              page: 0
+              size: 20
+              sort:
+                - field: "name"
+                  direction: "ASC"
+          noFilters:
+            summary: Get first page of all locations
+            value:
+              page: 0
+              size: 20
+          emptyBody:
+            summary: Default search (empty body)
+            value: {}
+  responses:
+    '200':
+      description: Search results retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/locations/components.yml#/components/schemas/SearchLocationsResponse'
+          examples:
+            withResults:
+              summary: Page with results
+              value:
+                page: 0
+                size: 20
+                totalPages: 1
+                totalItems: 3
+                items:
+                  - id: 5
+                    name: "Tienda Centro Madrid"
+                    locationType:
+                      id: 1
+                      name: "STORE"
+                    address: "Gran Vía 25, 28013 Madrid"
+                    active: true
+                    latitude: 40.4168
+                    longitude: -3.7038
+                  - id: 12
+                    name: "Almacén Norte"
+                    locationType:
+                      id: 2
+                      name: "STORE_WAREHOUSE"
+                    address: "Polígono Industrial 7, 48001 Bilbao"
+                    active: true
+                    latitude: 43.2630
+                    longitude: -2.9340
+            emptyResults:
+              summary: No matching results
+              value:
+                page: 0
+                size: 20
+                totalPages: 0
+                totalItems: 0
+                items: []
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
