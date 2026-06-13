@@ -1,0 +1,101 @@
+components:
+  schemas:
+    CreateSupplierRequest:
+      type: object
+      description: >
+        Request payload for creating a new supplier.
+        The tenant is automatically resolved from the JWT token (claim: tenant_name).
+        Business rules:
+        - name must be unique per tenant
+        - taxId must be unique per tenant if provided
+        - email must follow RFC 5322 format if provided
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Name of the supplier. Must be unique per tenant.
+          minLength: 1
+          maxLength: 200
+          example: "Lácteos Pascual S.A."
+        contactName:
+          type: string
+          description: Name of the primary contact person at the supplier
+          maxLength: 200
+          example: "María García"
+        phone:
+          type: string
+          description: Phone number of the supplier
+          maxLength: 50
+          example: "+34 912 345 678"
+        email:
+          type: string
+          format: email
+          description: Email address of the supplier. Must follow RFC 5322 format.
+          example: "ventas@pascual.com"
+        address:
+          type: string
+          description: Physical address of the supplier
+          maxLength: 500
+          example: "Calle Mayor 12, 28013 Madrid"
+        taxId:
+          type: string
+          description: Tax identification number. Must be unique per tenant if provided.
+          maxLength: 50
+          example: "A28000000"
+        notes:
+          type: string
+          description: Additional notes about the supplier
+          maxLength: 1000
+          example: "Proveedor principal de lácteos"
+
+    CreateSupplierResponse:
+      type: object
+      properties:
+        supplierId:
+          type: integer
+          format: int64
+          description: Unique identifier for the created supplier.
+          example: 17
+
+    SupplierDetailResponse:
+      type: object
+      description: Full detail of a supplier, used for single-resource retrieval
+      properties:
+        id:
+          $ref: '#/components/schemas/SupplierId'
+        name:
+          type: string
+          description: Name of the supplier
+          example: "Lácteos Pascual S.A."
+        contactName:
+          type: string
+          description: Name of the primary contact person
+          example: "María García"
+        phone:
+          type: string
+          description: Phone number of the supplier
+          example: "+34 912 345 678"
+        email:
+          type: string
+          format: email
+          description: Email address of the supplier
+          example: "ventas@pascual.com"
+        address:
+          type: string
+          description: Physical address of the supplier
+          example: "Calle Mayor 12, 28013 Madrid"
+        taxId:
+          type: string
+          description: Tax identification number
+          example: "A28000000"
+        notes:
+          type: string
+          description: Additional notes about the supplier
+          example: "Proveedor principal de lácteos"
+
+    SupplierId:
+      type: integer
+      format: int64
+      description: Unique identifier for the supplier
+      example: 17

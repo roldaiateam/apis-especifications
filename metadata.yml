@@ -27,3 +27,6 @@ apis:
   - name: "Locations REST API"
     api-spec-type: rest
     definition-path: locations/rest
+  - name: "Suppliers REST API"
+    api-spec-type: rest
+    definition-path: suppliers/rest
