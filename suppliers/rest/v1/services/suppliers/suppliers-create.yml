@@ -1,0 +1,80 @@
+post:
+  tags:
+    - Suppliers
+  summary: Create a new supplier
+  description: >
+    Creates a new supplier in the system.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    The supplier name must be unique per tenant.
+    If taxId is provided, it must also be unique per tenant.
+  operationId: createSupplier
+  requestBody:
+    description: Data for creating a new supplier
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/suppliers/components.yml#/components/schemas/CreateSupplierRequest'
+        examples:
+          standard:
+            summary: Standard supplier creation with all fields
+            value:
+              name: "Lácteos Pascual S.A."
+              contactName: "María García"
+              phone: "+34 912 345 678"
+              email: "ventas@pascual.com"
+              address: "Calle Mayor 12, 28013 Madrid"
+              taxId: "A28000000"
+              notes: "Proveedor principal de lácteos"
+          minimal:
+            summary: Minimal supplier with only required fields
+            value:
+              name: "Distribuciones López"
+  responses:
+    '201':
+      description: Supplier created successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/suppliers/components.yml#/components/schemas/CreateSupplierResponse'
+    '400':
+      description: Request contains incorrect syntax, invalid fields, or violated logical validation rules
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            validationError:
+              summary: Supplier name is empty or missing
+              value:
+                errorCode: SUPPLIER_VALIDATION
+                errorMessage: Supplier name is required
+            invalidEmail:
+              summary: Email format is invalid
+              value:
+                errorCode: SUPPLIER_VALIDATION
+                errorMessage: Email must follow RFC 5322 format
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '409':
+      description: Supplier uniqueness conflict for tenant
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            supplierNameDuplicated:
+              summary: Supplier name already exists for this tenant
+              value:
+                errorCode: SUPPLIER_NAME_DUPLICATED
+                errorMessage: Supplier name already exists for tenant
+            supplierTaxIdDuplicated:
+              summary: Supplier tax ID already exists for this tenant
+              value:
+                errorCode: SUPPLIER_TAX_ID_DUPLICATED
+                errorMessage: Supplier tax ID already exists for tenant
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
