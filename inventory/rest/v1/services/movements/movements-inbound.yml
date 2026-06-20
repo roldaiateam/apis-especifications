@@ -115,10 +115,15 @@ post:
           schema:
             $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
           examples:
-            batchCodeConflict:
-              summary: Batch code assigned to another product
+            batchCodeExpiryDateConflict:
+              summary: Batch code expiry date mismatch with existing batch
               value:
-                errorCode: BATCH_CODE_CONFLICT
-                errorMessage: The provided batchCode is already associated with a different product
+                errorCode: BATCH_COHERENCE_EXPIRY_DATE_CONFLICT
+                errorMessage: Existing batch expiry date conflicts with provided expiry date
+            batchCodeSupplierConflict:
+              summary: Batch code supplier mismatch with existing batch
+              value:
+                errorCode: BATCH_COHERENCE_SUPPLIER_CONFLICT
+                errorMessage: Existing batch supplier conflicts with provided supplier
     '500':
       $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
