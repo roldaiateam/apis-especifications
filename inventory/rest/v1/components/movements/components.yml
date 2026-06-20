@@ -1,0 +1,124 @@
+components:
+  schemas:
+    RegisterInboundMovementRequest:
+      type: object
+      description: >
+        Request payload to register an inbound stock movement (purchase from supplier).
+        Atomically creates or increments a ProductBatch and its corresponding Inventory row.
+        Business rules:
+        - productId, supplierId and locationId must exist and be active.
+        - batchCode is required when the product has trackedByBatch=true; auto-generated otherwise.
+        - expiryDate is required when the product has trackedByExpiry=true and must be a future date.
+        - manufacturingDate must be <= expiryDate when both are present.
+        - quantity must be > 0.
+        - unitCost must be > 0.
+        - employee_id is resolved automatically from the JWT token — do NOT include it in the request.
+      required:
+        - productId
+        - supplierId
+        - locationId
+        - quantity
+        - unitCost
+        - unitCostCurrencyId
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Identifier of the product being received. Must exist and be active.
+          example: 42
+        supplierId:
+          type: integer
+          format: int64
+          description: Identifier of the supplier providing the goods. Must exist.
+          example: 17
+        locationId:
+          type: integer
+          format: int64
+          description: Identifier of the destination storage location. Must exist and be active. Maps to to_location_id in inventory_movement.
+          example: 5
+        batchCode:
+          type: string
+          description: >
+            Batch/lot code for the product. Required when the product has trackedByBatch=true.
+            If the product does not track by batch, a DEFAULT batch is used automatically.
+          minLength: 1
+          maxLength: 100
+          example: "L20260301"
+        quantity:
+          type: integer
+          format: int32
+          description: Number of units being received. Must be greater than 0.
+          minimum: 1
+          example: 100
+        expiryDate:
+          type: string
+          format: date
+          description: >
+            Expiry date of the batch (ISO 8601 date). Required when the product has trackedByExpiry=true.
+            Must be a future date.
+          example: "2026-06-15"
+        manufacturingDate:
+          type: string
+          format: date
+          description: >
+            Manufacturing date of the batch (ISO 8601 date). Optional.
+            When both manufacturingDate and expiryDate are present, manufacturingDate must be <= expiryDate.
+          example: "2026-03-01"
+        unitCost:
+          type: number
+          format: double
+          description: Unit purchase cost of the goods. Must be > 0. Stored in product_batch.unit_cost to feed cost history.
+          minimum: 0.01
+          example: 0.95
+        unitCostCurrencyId:
+          type: integer
+          format: int64
+          description: Identifier of the currency for unitCost. Foreign key to supported_currency table.
+          example: 2
+        documentReference:
+          type: string
+          description: Optional reference to the source document (delivery note, invoice number, etc.).
+          minLength: 1
+          maxLength: 100
+          example: "ALB-2026-00045"
+        notes:
+          type: string
+          description: Optional free-text notes about this inbound movement.
+          minLength: 1
+          maxLength: 1000
+          example: "Recepción semanal"
+        movementDate:
+          type: string
+          format: date-time
+          description: Date and time of the movement (ISO 8601). Defaults to current server time when omitted.
+          example: "2026-03-01T10:00:00Z"
+
+    InboundMovementCreatedResponse:
+      type: object
+      description: Response returned after a successful inbound movement registration. Contains the identifier of the created inventory movement record.
+      properties:
+        id:
+          $ref: '#/components/schemas/MovementId'
+
+    MovementId:
+      type: integer
+      format: int64
+      description: Unique identifier for an inventory movement record.
+      example: 24
+
+    MovementType:
+      type: string
+      description: >
+        Type of inventory movement.
+        - IN: inbound stock entry (purchase from supplier).
+        - OUT: outbound stock exit (sale or consumption).
+        - ADJUSTMENT: manual stock correction.
+        - TRANSFER: stock moved between locations.
+        - COMPENSATION: compensatory adjustment.
+      enum:
+        - IN
+        - OUT
+        - ADJUSTMENT
+        - TRANSFER
+        - COMPENSATION
+      example: "IN"

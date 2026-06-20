@@ -1,0 +1,124 @@
+post:
+  tags:
+    - Inventory
+  summary: Register an inbound stock movement
+  description: >
+    Registers an inbound stock entry resulting from a supplier purchase.
+    Atomically creates or increments a ProductBatch (by natural key product_id + batch_code)
+    and updates the Inventory row (batch_id + location_id).
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Business rules:
+    - productId, supplierId and locationId must exist and be active.
+    - batchCode is required when the product has trackedByBatch=true.
+    - expiryDate is required when the product has trackedByExpiry=true and must be a future date.
+    - manufacturingDate must be <= expiryDate when both are present.
+    - quantity must be > 0 and unitCost must be > 0.
+    - employee_id is extracted automatically from the JWT — do NOT include it in the request.
+  operationId: registerInboundMovement
+  requestBody:
+    description: Data for registering an inbound stock movement
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/RegisterInboundMovementRequest'
+        examples:
+          trackedByBatch:
+            summary: Product tracked by batch and expiry date
+            value:
+              productId: 42
+              supplierId: 17
+              locationId: 5
+              batchCode: "L20260301"
+              quantity: 100
+              expiryDate: "2026-06-15"
+              manufacturingDate: "2026-03-01"
+              unitCost: 0.95
+              unitCostCurrencyId: 2
+              documentReference: "ALB-2026-00045"
+              notes: "Recepción semanal"
+              movementDate: "2026-03-01T10:00:00Z"
+          noTracking:
+            summary: Product not tracked by batch (no batchCode or dates required)
+            value:
+              productId: 10
+              supplierId: 3
+              locationId: 2
+              quantity: 50
+              unitCost: 1.20
+              unitCostCurrencyId: 1
+  responses:
+    '201':
+      description: Inbound movement registered successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/InboundMovementCreatedResponse'
+          examples:
+            created:
+              summary: Movement created
+              value:
+                id: 24
+    '400':
+      description: Validation error — invalid fields, quantity <= 0, incoherent dates, or missing required conditional fields
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            validationError:
+              summary: Generic validation error
+              value:
+                errorCode: MOVEMENT_INBOUND_VALIDATION
+                errorMessage: Request contains invalid or inconsistent fields
+            batchCodeRequired:
+              summary: batchCode missing for a batch-tracked product
+              value:
+                errorCode: BATCH_CODE_REQUIRED
+                errorMessage: batchCode is required because the product is tracked by batch
+            expiryDateRequired:
+              summary: expiryDate missing for an expiry-tracked product
+              value:
+                errorCode: EXPIRY_DATE_REQUIRED
+                errorMessage: expiryDate is required because the product is tracked by expiry date
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      description: One or more referenced entities do not exist or are inactive
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            productNotFound:
+              summary: Product not found or inactive
+              value:
+                errorCode: PRODUCT_NOT_FOUND
+                errorMessage: The specified product does not exist or is inactive
+            supplierNotFound:
+              summary: Supplier not found
+              value:
+                errorCode: SUPPLIER_NOT_FOUND
+                errorMessage: The specified supplier does not exist
+            locationNotFound:
+              summary: Location not found or inactive
+              value:
+                errorCode: LOCATION_NOT_FOUND
+                errorMessage: The specified location does not exist or is inactive
+    '409':
+      description: batchCode already exists for a different product (natural key conflict)
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            batchCodeConflict:
+              summary: Batch code assigned to another product
+              value:
+                errorCode: BATCH_CODE_CONFLICT
+                errorMessage: The provided batchCode is already associated with a different product
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

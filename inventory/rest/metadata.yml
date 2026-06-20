@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Inventory REST API
-  version: 0.0.1
+  version: 0.0.2
   description: >
     Inventory management and movement types.
   maintainer:
