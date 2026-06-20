@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 0.0.1
+  version: 0.0.3-unstable
 
 servers:
   - url: http://localhost:8090/mic-inventory
@@ -30,6 +30,9 @@ security:
 paths:
   /v1/suppliers:
     $ref: './v1/services/suppliers/suppliers-create.yml'
+  /v1/suppliers/search:
+    $ref: './v1/services/suppliers/suppliers-search.yml'
+
 
 components:
   securitySchemes:
