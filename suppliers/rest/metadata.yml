@@ -3,7 +3,7 @@ api-spec-type: rest
 
 api:
   name: Suppliers REST API
-  version: 0.0.3-unstable
+  version: 0.0.3
   description: >
     This API provides endpoints to manage suppliers for tenant inventory workflows.
     It includes supplier creation with tenant-scoped uniqueness for name and tax ID.
