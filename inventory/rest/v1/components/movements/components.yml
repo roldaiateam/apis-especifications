@@ -105,20 +105,3 @@ components:
       format: int64
       description: Unique identifier for an inventory movement record.
       example: 24
-
-    MovementType:
-      type: string
-      description: >
-        Type of inventory movement.
-        - IN: inbound stock entry (purchase from supplier).
-        - OUT: outbound stock exit (sale or consumption).
-        - ADJUSTMENT: manual stock correction.
-        - TRANSFER: stock moved between locations.
-        - COMPENSATION: compensatory adjustment.
-      enum:
-        - IN
-        - OUT
-        - ADJUSTMENT
-        - TRANSFER
-        - COMPENSATION
-      example: "IN"
