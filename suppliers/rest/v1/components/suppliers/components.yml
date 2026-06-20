@@ -99,3 +99,170 @@ components:
       format: int64
       description: Unique identifier for the supplier
       example: 17
+
+    # Search Suppliers schemas
+    # ──────────────────────────────────────────────
+
+    SearchSuppliersRequest:
+      type: object
+      description: >
+        Search criteria and pagination parameters for querying suppliers.
+        All filter fields are optional. When omitted, no filter is applied for that field.
+        An empty body {} returns the first page of all active suppliers.
+        Results are paginated using page/size.
+      required:
+        - page
+        - size
+      properties:
+        filters:
+          $ref: '#/components/schemas/SupplierSearchFilters'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page index. The first page is 0.
+          minimum: 0
+          default: 0
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page. Must be between 1 and 100.
+          minimum: 1
+          maximum: 100
+          default: 20
+          example: 20
+        sort:
+          type: array
+          description: List of sort criteria to apply in order. Each item specifies a field and direction.
+          items:
+            $ref: '#/components/schemas/SupplierSortCriteria'
+          example:
+            - field: "name"
+              direction: "ASC"
+
+    SupplierSortCriteria:
+      type: object
+      description: A single sort criterion specifying a field and direction.
+      required:
+        - field
+        - direction
+      properties:
+        field:
+          type: string
+          description: Field name to sort by.
+          enum:
+            - name
+            - email
+          example: "name"
+        direction:
+          type: string
+          description: Sort direction.
+          enum:
+            - ASC
+            - DESC
+          example: "ASC"
+
+    SupplierSearchFilters:
+      type: object
+      description: >
+        Optional filter criteria for searching suppliers.
+        All fields are optional — omit a field to skip that filter.
+      properties:
+        keyword:
+          type: string
+          description: >
+            Free-text search term. Performs a case-insensitive partial match (ILIKE)
+            across supplier name, taxId, and email fields.
+          maxLength: 255
+          minLength: 3
+          example: "Pascual"
+        active:
+          type: boolean
+          description: Filter by active status.
+          example: true
+
+    SearchSuppliersResponse:
+      type: object
+      description: Paginated search results for suppliers.
+      required:
+        - page
+        - size
+        - totalPages
+        - totalItems
+        - items
+      properties:
+        page:
+          type: integer
+          format: int32
+          description: Current page index (zero-based).
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page.
+          example: 20
+        totalPages:
+          type: integer
+          format: int32
+          description: Total number of pages available.
+          example: 3
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of items matching the search criteria.
+          example: 47
+        items:
+          type: array
+          description: List of suppliers matching the search criteria for the current page.
+          items:
+            $ref: '#/components/schemas/SupplierSummary'
+
+    SupplierSummary:
+      type: object
+      description: Lightweight representation of a supplier for search result listings.
+      required:
+        - id
+        - name
+        - active
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the supplier.
+          example: 17
+        name:
+          type: string
+          description: Name of the supplier.
+          maxLength: 200
+          example: "Lácteos Pascual S.A."
+        contactName:
+          type: string
+          description: Name of the primary contact person.
+          example: "María García"
+        email:
+          type: string
+          format: email
+          description: Email address of the supplier.
+          example: "ventas@pascual.com"
+        phone:
+          type: string
+          description: Phone number of the supplier.
+          example: "+34 912 345 678"
+        taxId:
+          type: string
+          description: Tax identification number.
+          example: "A28000000"
+        address:
+          type: string
+          description: Physical address of the supplier.
+          maxLength: 500
+          example: "Calle Mayor 12, 28013 Madrid"
+        notes:
+          type: string
+          description: Additional notes about the supplier.
+          maxLength: 1000
+          example: "Proveedor principal de lácteos"
+        active:
+          type: boolean
+          description: Whether the supplier is currently active.
+          example: true

@@ -1,0 +1,79 @@
+post:
+  tags:
+    - Suppliers
+  summary: Search suppliers with filters
+  description: >
+    Searches suppliers for the current tenant using optional filter criteria with paginated results.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    All filter fields are optional. When no filters are provided, all active suppliers for the tenant are returned.
+    The keyword filter performs a case-insensitive partial match (ILIKE) across name, taxId, and email fields.
+  operationId: searchSuppliers
+  requestBody:
+    description: Search criteria and pagination parameters
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/suppliers/components.yml#/components/schemas/SearchSuppliersRequest'
+        examples:
+          withFilters:
+            summary: Search with keyword and active filter
+            value:
+              filters:
+                keyword: "Pascual"
+                active: true
+              page: 0
+              size: 20
+              sort:
+                - field: "name"
+                  direction: "ASC"
+          noFilters:
+            summary: Get first page of all suppliers
+            value:
+              page: 0
+              size: 20
+          emptyBody:
+            summary: Default search (empty body)
+            value: {}
+  responses:
+    '200':
+      description: Search results retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/suppliers/components.yml#/components/schemas/SearchSuppliersResponse'
+          examples:
+            withResults:
+              summary: Page with results
+              value:
+                page: 0
+                size: 20
+                totalPages: 3
+                totalItems: 47
+                items:
+                  - id: 17
+                    name: "Lácteos Pascual S.A."
+                    contactName: "María García"
+                    email: "ventas@pascual.com"
+                    phone: "+34 912 345 678"
+                    taxId: "A28000000"
+                    address: "Calle Mayor 12, 28013 Madrid"
+                    notes: "Proveedor principal de lácteos"
+                    active: true
+            emptyResults:
+              summary: No matching results
+              value:
+                page: 0
+                size: 20
+                totalPages: 0
+                totalItems: 0
+                items: []
+    '400':
+      $ref: '../../components/errors/components.yml#/components/responses/BadRequest'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
