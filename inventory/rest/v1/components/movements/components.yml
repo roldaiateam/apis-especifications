@@ -194,6 +194,8 @@ components:
         - COMPLETED
         - COMPLETED_WITH_ERRORS
         - FAILED
+        - PENDING
+        - PENDING_RETRY
       example: "COMPLETED_WITH_ERRORS"
 
     ReceiptItemStatus:
