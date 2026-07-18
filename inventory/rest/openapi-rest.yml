@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 0.0.1
+  version: 0.0.3
 
 servers:
   - url: http://localhost:8090/mic-inventory
@@ -30,6 +30,10 @@ security:
 paths:
   /v1/inventory/movement-types:
     $ref: './v1/services/movement-types/movement-types-get-all.yml'
+  /v1/movements/inbound:
+    $ref: './v1/services/movements/movements-inbound.yml'
+  /v1/movements/inbound/receipts/{receiptId}:
+    $ref: './v1/services/movements/movements-inbound-receipts-by-id.yml'
 
 components:
   securitySchemes:
