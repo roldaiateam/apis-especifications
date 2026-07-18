@@ -1,0 +1,21 @@
+get:
+  tags:
+    - Inventory
+  summary: Get all movement reasons
+  description: >
+    Retrieves a list of all movement reasons available in the system
+    (e.g., SALE, INTERNAL_CONSUMPTION, EXPIRY, OTHER).
+  operationId: getMovementReasons
+  responses:
+    '200':
+      description: List of movement reasons retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movement-reasons/components.yml#/components/schemas/MovementReasonListResponse'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

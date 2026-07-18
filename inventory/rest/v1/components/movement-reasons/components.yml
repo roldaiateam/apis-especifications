@@ -1,0 +1,38 @@
+components:
+  schemas:
+    MovementReasonListResponse:
+      type: object
+      description: Response containing a list of all movement reasons
+      properties:
+        movementReasons:
+          type: array
+          description: List of movement reasons
+          items:
+            $ref: '#/components/schemas/MovementReasonDTO'
+
+    MovementReasonDTO:
+      type: object
+      description: Catalog entity representing a reason for inventory movements (e.g. SALE, EXPIRY, INTERNAL_CONSUMPTION)
+      required:
+        - id
+        - code
+      properties:
+        id:
+          $ref: '#/components/schemas/MovementReasonId'
+        code:
+          type: string
+          description: Unique programmatic code for the movement reason (e.g., SALE, INTERNAL_CONSUMPTION, EXPIRY, OTHER)
+          minLength: 1
+          maxLength: 100
+          example: "SALE"
+        description:
+          type: string
+          description: Human-readable description of the movement reason
+          maxLength: 500
+          example: "Venta"
+
+    MovementReasonId:
+      type: integer
+      format: int32
+      description: Unique numeric identifier for the movement reason
+      example: 1
