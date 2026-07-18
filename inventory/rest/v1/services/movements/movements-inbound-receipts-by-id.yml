@@ -1,0 +1,80 @@
+get:
+  tags:
+    - Inventory
+  summary: Get inbound receipt by ID
+  description: >
+    Retrieves the current processing state of an inbound stock receipt by its unique identifier.
+    Useful for checking whether PENDING_RETRY items have been resolved after the initial POST.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+  operationId: getInboundReceipt
+  parameters:
+    - name: receiptId
+      in: path
+      required: true
+      description: Unique identifier of the inbound receipt to retrieve.
+      schema:
+        $ref: '../../components/movements/components.yml#/components/schemas/ReceiptId'
+  responses:
+    '200':
+      description: Inbound receipt retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/InboundReceiptResponse'
+          examples:
+            completed:
+              summary: All items processed successfully
+              value:
+                receiptId: 1
+                status: COMPLETED
+                totalItems: 2
+                completedItems: 2
+                failedItems: 0
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 101
+                    productId: 42
+                  - index: 1
+                    status: COMPLETED
+                    movementId: 102
+                    productId: 43
+            completedWithErrors:
+              summary: One item failed permanently
+              value:
+                receiptId: 2
+                status: COMPLETED_WITH_ERRORS
+                totalItems: 2
+                completedItems: 1
+                failedItems: 1
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 103
+                    productId: 42
+                  - index: 1
+                    status: FAILED
+                    productId: 43
+                    errorCode: PRODUCT_NOT_FOUND
+                    errorMessage: "Product with id 43 not found"
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      description: Receipt not found for the current tenant
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            receiptNotFound:
+              summary: Receipt does not exist
+              value:
+                errorCode: RECEIPT_NOT_FOUND
+                errorMessage: "Inbound receipt with id 99 not found"
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

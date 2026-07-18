@@ -1,0 +1,121 @@
+post:
+  tags:
+    - Inventory
+  summary: Register inbound stock movements
+  description: >
+    Registers one or more inbound stock entries resulting from a supplier delivery.
+    Each item is processed independently — partial failures are reported per item
+    without rolling back successfully processed ones.
+    On success, returns a receipt with the processing result for each item.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Business rules per item:
+    - productId, supplierId and locationId must exist and be active.
+    - batchCode is required when the product has trackedByBatch=true.
+    - expiryDate is required when the product has trackedByExpiry=true and must be a future date.
+    - manufacturingDate must be <= expiryDate when both are present.
+    - quantity must be > 0 and unitCost must be > 0.
+    - employee_id is extracted automatically from the JWT — do NOT include it in the request.
+  operationId: registerInboundMovement
+  requestBody:
+    description: Delivery receipt with one or more inbound stock movements to register
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/RegisterInboundBulkRequest'
+        examples:
+          partialSuccess:
+            summary: Two items — one succeeds, one fails
+            value:
+              documentReference: "FAC-2026-0042"
+              notes: "Entrega proveedor Lacteos SA — 15 julio"
+              items:
+                - productId: 42
+                  supplierId: 7
+                  locationId: 3
+                  batchCode: "LOT-2026-001"
+                  quantity: 100
+                  expiryDate: "2027-01-15"
+                  manufacturingDate: "2026-05-01"
+                  unitCost: 2.50
+                  unitCostCurrencyId: 1
+                  movementDate: "2026-07-06T10:00:00Z"
+                - productId: 43
+                  supplierId: 7
+                  locationId: 3
+                  batchCode: "LOT-2026-002"
+                  quantity: 50
+                  expiryDate: "2027-03-01"
+                  unitCost: 1.80
+                  unitCostCurrencyId: 1
+                  movementDate: "2026-07-06T10:00:00Z"
+          minimal:
+            summary: Single item — minimal required fields
+            value:
+              items:
+                - productId: 10
+                  supplierId: 3
+                  locationId: 2
+                  quantity: 30
+                  unitCost: 1.20
+                  unitCostCurrencyId: 1
+  responses:
+    '201':
+      description: Receipt created. Check status and results for per-item outcome.
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/InboundReceiptResponse'
+          examples:
+            completedWithErrors:
+              summary: One item succeeded, one failed
+              value:
+                receiptId: 1
+                status: COMPLETED_WITH_ERRORS
+                totalItems: 2
+                completedItems: 1
+                failedItems: 1
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 101
+                    productId: 42
+                  - index: 1
+                    status: FAILED
+                    productId: 43
+                    errorCode: PRODUCT_NOT_FOUND
+                    errorMessage: "Product with id 43 not found"
+            allCompleted:
+              summary: All items processed successfully
+              value:
+                receiptId: 2
+                status: COMPLETED
+                totalItems: 1
+                completedItems: 1
+                failedItems: 0
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 102
+                    productId: 10
+    '400':
+      description: Request-level validation error — malformed payload or items array constraints violated
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            emptyItems:
+              summary: items array is empty or missing
+              value:
+                errorCode: MOVEMENT_INBOUND_VALIDATION
+                errorMessage: items array must contain between 1 and 100 elements
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
