@@ -30,6 +30,8 @@ security:
 paths:
   /v1/inventory/movement-types:
     $ref: './v1/services/movement-types/movement-types-get-all.yml'
+  /v1/inventory/movement-reasons:
+    $ref: './v1/services/movement-reasons/movement-reasons-get-all.yml'
 
 components:
   securitySchemes:
