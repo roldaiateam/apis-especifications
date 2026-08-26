@@ -1,0 +1,25 @@
+inventory/rest/v1/components/inventory/components.yml
+  s_a6105109202be1::t_a2b131f5f1084e 1-173
+inventory/rest/openapi-rest.yml
+  s_a6105109202be1::t_52d610000e5e1a 10,39-40
+inventory/rest/v1/services/inventory/inventory-search.yml
+  s_a6105109202be1::t_1b247b7b1b4112 1-125
+inventory/rest/metadata.yml
+  s_a6105109202be1::t_72efce5424d828 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ebcc81943d5c8e1dc48c4aa4e73d29e6b2740a22",
+  "prompts": {},
+  "sessions": {
+    "s_a6105109202be1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_a6105109202be1",
+        "model": "unknown"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
