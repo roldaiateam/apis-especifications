@@ -1,0 +1,182 @@
+post:
+  tags:
+    - Inventory
+  summary: Search inventory movements
+  description: >
+    Searches and filters inventory movements with pagination and sorting.
+    Returns a paginated list of movements matching the specified filters.
+    All filters are optional — an empty request body returns all movements
+    with default pagination (page 0, size 20, sorted by movementDate DESC).
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Filter rules:
+    - locationId is a convenience filter matching either origin or destination location.
+      It cannot be combined with fromLocationId or toLocationId in the same request.
+    - dateFrom must be <= dateTo when both are present.
+    - includeCompensated defaults to true; set to false to exclude already-compensated movements.
+    - onlyCompensations defaults to false; set to true to return only COMPENSATION type movements.
+  operationId: searchMovements
+  requestBody:
+    description: Search criteria with optional filters, pagination and sorting
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/SearchMovementsRequest'
+        examples:
+          fullFilters:
+            summary: Search with multiple filters and sorting
+            value:
+              filters:
+                productId: 42
+                locationId: 5
+                batchCode: "L20260301"
+                movementTypeId: 2
+                reasonId: 1
+                userId: "user-uuid-123"
+                dateFrom: "2026-05-01T00:00:00Z"
+                dateTo: "2026-05-17T23:59:59Z"
+                includeCompensated: true
+                onlyCompensations: false
+                transferGroupId: "8f3e9c1b-7a52-4d8e-b1f4-9c2a6e5d8b3a"
+                documentReference: "ALB-2026-00045"
+              page: 0
+              size: 20
+              sort:
+                - field: "movementDate"
+                  direction: "DESC"
+          transferSearch:
+            summary: Search transfer movements between two locations
+            value:
+              filters:
+                fromLocationId: 3
+                toLocationId: 5
+                movementTypeId: 4
+              page: 0
+              size: 50
+              sort:
+                - field: "movementDate"
+                  direction: "DESC"
+          minimal:
+            summary: Default search — all movements, first page
+            value: {}
+  responses:
+    '200':
+      description: Paginated list of movements matching the search criteria
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/SearchMovementsResponse'
+          examples:
+            outboundMovements:
+              summary: Page of outbound movements
+              value:
+                page: 0
+                size: 20
+                totalPages: 5
+                totalItems: 92
+                items:
+                  - movementId: 5010
+                    type: "OUT"
+                    movementDate: "2026-05-17T10:15:00Z"
+                    createdBy:
+                      id: "user-uuid-123"
+                      name: "Andrea Pérez"
+                    product:
+                      id: 42
+                      name: "Leche Entera 1L"
+                      sku: "LECH-ENT-1L"
+                    batch:
+                      id: 311
+                      code: "L20260301"
+                      expiryDate: "2026-06-15"
+                    fromLocation:
+                      id: 5
+                      name: "Tienda Centro Madrid"
+                    toLocation: null
+                    quantity: -25
+                    reason:
+                      id: 1
+                      code: "SALE"
+                      name: "Venta"
+                    documentReference: null
+                    transferGroupId: null
+                    compensatedByMovementId: null
+                    compensatesMovementId: null
+                    notes: "Venta mostrador ticket #4521"
+            transferMovements:
+              summary: Transfer movement pair
+              value:
+                page: 0
+                size: 20
+                totalPages: 1
+                totalItems: 2
+                items:
+                  - movementId: 5020
+                    type: "TRANSFER"
+                    movementDate: "2026-05-16T14:30:00Z"
+                    createdBy:
+                      id: "user-uuid-456"
+                      name: "Carlos López"
+                    product:
+                      id: 42
+                      name: "Leche Entera 1L"
+                      sku: "LECH-ENT-1L"
+                    batch:
+                      id: 311
+                      code: "L20260301"
+                      expiryDate: "2026-06-15"
+                    fromLocation:
+                      id: 3
+                      name: "Almacén Principal"
+                    toLocation:
+                      id: 5
+                      name: "Tienda Centro Madrid"
+                    quantity: 50
+                    reason:
+                      id: 5
+                      code: "TRANSFER"
+                      name: "Transferencia entre ubicaciones"
+                    documentReference: null
+                    transferGroupId: "8f3e9c1b-7a52-4d8e-b1f4-9c2a6e5d8b3a"
+                    compensatedByMovementId: null
+                    compensatesMovementId: null
+                    notes: null
+            emptyResult:
+              summary: No movements match the filters
+              value:
+                page: 0
+                size: 20
+                totalPages: 0
+                totalItems: 0
+                items: []
+    '400':
+      description: >
+        Invalid request — malformed filters, unsupported sort field,
+        or dateFrom > dateTo, or locationId combined with fromLocationId/toLocationId
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            invalidDateRange:
+              summary: dateFrom is after dateTo
+              value:
+                errorCode: MOVEMENT_SEARCH_VALIDATION
+                errorMessage: "dateFrom must be less than or equal to dateTo"
+            conflictingLocationFilters:
+              summary: locationId combined with fromLocationId or toLocationId
+              value:
+                errorCode: MOVEMENT_SEARCH_VALIDATION
+                errorMessage: "locationId cannot be combined with fromLocationId or toLocationId"
+            invalidSortField:
+              summary: Unsupported sort field
+              value:
+                errorCode: MOVEMENT_SEARCH_VALIDATION
+                errorMessage: "Invalid sort field 'name'. Allowed values: movementDate, quantity"
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

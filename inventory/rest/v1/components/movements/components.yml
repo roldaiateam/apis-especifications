@@ -232,3 +232,327 @@ components:
         - TRANSFER
         - COMPENSATION
       example: "IN"
+
+    SearchMovementsRequest:
+      type: object
+      description: >
+        Request payload to search and filter inventory movements with pagination and sorting.
+        All filters are optional — an empty filters object returns all movements.
+        The tenant is automatically resolved from the JWT token (claim: tenant_name).
+      properties:
+        filters:
+          $ref: '#/components/schemas/MovementSearchFilters'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number. Defaults to 0.
+          minimum: 0
+          default: 0
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page. Defaults to 20. Maximum 100.
+          minimum: 1
+          maximum: 100
+          default: 20
+          example: 20
+        sort:
+          type: array
+          description: >
+            Sort criteria applied in order of precedence.
+            Defaults to movementDate DESC when omitted.
+          items:
+            $ref: '#/components/schemas/MovementSortCriteria'
+
+    MovementSearchFilters:
+      type: object
+      description: >
+        Filter criteria for movement search. All fields are optional.
+        locationId is a convenience filter that matches either fromLocationId or toLocationId —
+        it cannot be combined with fromLocationId or toLocationId in the same request.
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Filter by product identifier.
+          example: 42
+        locationId:
+          type: integer
+          format: int64
+          description: >
+            Convenience filter — matches movements where the location appears as origin OR destination.
+            Mutually exclusive with fromLocationId and toLocationId.
+          example: 5
+        fromLocationId:
+          type: integer
+          format: int64
+          description: Filter by origin location. Mutually exclusive with locationId.
+          example: 3
+        toLocationId:
+          type: integer
+          format: int64
+          description: Filter by destination location. Mutually exclusive with locationId.
+          example: 5
+        batchCode:
+          type: string
+          description: Exact match on batch/lot code.
+          example: "L20260301"
+        movementTypeId:
+          type: integer
+          format: int64
+          description: Filter by movement type identifier (IN, OUT, ADJUSTMENT, TRANSFER, COMPENSATION).
+          example: 2
+        reasonId:
+          type: integer
+          format: int64
+          description: Filter by movement reason identifier.
+          example: 1
+        userId:
+          type: string
+          format: uuid
+          description: Filter by the operator who created the movement.
+          example: "user-uuid-123"
+        dateFrom:
+          type: string
+          format: date-time
+          description: Inclusive start of the date range filter on movementDate (ISO 8601).
+          example: "2026-05-01T00:00:00Z"
+        dateTo:
+          type: string
+          format: date-time
+          description: Inclusive end of the date range filter on movementDate (ISO 8601). Must be >= dateFrom.
+          example: "2026-05-17T23:59:59Z"
+        includeCompensated:
+          type: boolean
+          description: >
+            Whether to include movements that have already been compensated.
+            Defaults to true. Set to false to hide compensated movements.
+          default: true
+          example: true
+        onlyCompensations:
+          type: boolean
+          description: >
+            When true, returns only movements of type COMPENSATION.
+            Defaults to false.
+          default: false
+          example: false
+        transferGroupId:
+          type: string
+          format: uuid
+          description: Filter by transfer group identifier to retrieve the pair of movements that form a transfer.
+          example: "8f3e9c1b-7a52-4d8e-b1f4-9c2a6e5d8b3a"
+        documentReference:
+          type: string
+          description: Exact match on document reference (delivery note, invoice number, etc.).
+          example: "ALB-2026-00045"
+
+    MovementSortCriteria:
+      type: object
+      description: Single sort criterion with field and direction.
+      required:
+        - field
+        - direction
+      properties:
+        field:
+          type: string
+          description: Field to sort by.
+          enum:
+            - movementDate
+            - quantity
+          example: "movementDate"
+        direction:
+          type: string
+          description: Sort direction.
+          enum:
+            - ASC
+            - DESC
+          example: "DESC"
+
+    SearchMovementsResponse:
+      type: object
+      description: Paginated response for movement search.
+      properties:
+        page:
+          type: integer
+          format: int32
+          description: Current zero-based page number.
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Requested page size.
+          example: 20
+        totalPages:
+          type: integer
+          format: int32
+          description: Total number of pages available.
+          example: 5
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of movements matching the filters.
+          example: 92
+        items:
+          type: array
+          description: List of movements for the current page.
+          items:
+            $ref: '#/components/schemas/InventoryMovementSummary'
+
+    InventoryMovementSummary:
+      type: object
+      description: Summary of a single inventory movement returned by the search endpoint.
+      properties:
+        movementId:
+          type: integer
+          format: int64
+          description: Unique identifier of the movement.
+          example: 5010
+        type:
+          $ref: '#/components/schemas/MovementType'
+        movementDate:
+          type: string
+          format: date-time
+          description: Date and time when the movement occurred (ISO 8601).
+          example: "2026-05-17T10:15:00Z"
+        createdBy:
+          $ref: '#/components/schemas/MovementUserSummary'
+        product:
+          $ref: '#/components/schemas/MovementProductSummary'
+        batch:
+          nullable: true
+          description: Batch information. Null when the movement is not batch-tracked.
+          allOf:
+            - $ref: '#/components/schemas/MovementBatchSummary'
+        fromLocation:
+          nullable: true
+          description: Origin location. Null for inbound movements (IN).
+          allOf:
+            - $ref: '#/components/schemas/MovementLocationSummary'
+        toLocation:
+          nullable: true
+          description: Destination location. Null for outbound movements (OUT).
+          allOf:
+            - $ref: '#/components/schemas/MovementLocationSummary'
+        quantity:
+          type: integer
+          format: int32
+          description: >
+            Quantity moved. Positive for inbound (IN), negative for outbound (OUT).
+            Sign convention depends on the movement type.
+          example: -25
+        reason:
+          $ref: '#/components/schemas/MovementReasonSummary'
+        documentReference:
+          type: string
+          nullable: true
+          description: Reference to the source document (delivery note, invoice, etc.).
+          example: null
+        transferGroupId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Identifier linking the pair of movements that form a transfer.
+          example: null
+        compensatedByMovementId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Identifier of the compensation movement that reversed this movement. Null if not compensated.
+          example: null
+        compensatesMovementId:
+          type: integer
+          format: int64
+          nullable: true
+          description: Identifier of the original movement that this compensation reverses. Null if this is not a compensation.
+          example: null
+        notes:
+          type: string
+          nullable: true
+          description: Free-text notes about the movement.
+          maxLength: 1000
+          example: "Venta mostrador ticket #4521"
+
+    MovementUserSummary:
+      type: object
+      description: Summary of the user who created a movement.
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: User identifier.
+          example: "user-uuid-123"
+        name:
+          type: string
+          description: Display name of the user.
+          example: "Andrea Pérez"
+
+    MovementProductSummary:
+      type: object
+      description: Summary of the product involved in a movement.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Product identifier.
+          example: 42
+        name:
+          type: string
+          description: Product name.
+          example: "Leche Entera 1L"
+        sku:
+          type: string
+          description: Stock keeping unit code.
+          example: "LECH-ENT-1L"
+
+    MovementBatchSummary:
+      type: object
+      description: Summary of the batch involved in a movement.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Batch identifier.
+          example: 311
+        code:
+          type: string
+          description: Batch/lot code.
+          example: "L20260301"
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+          description: Expiry date of the batch (ISO 8601 date). Null when the product does not track expiry.
+          example: "2026-06-15"
+
+    MovementLocationSummary:
+      type: object
+      description: Summary of a storage location involved in a movement.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Location identifier.
+          example: 5
+        name:
+          type: string
+          description: Location name.
+          example: "Tienda Centro Madrid"
+
+    MovementReasonSummary:
+      type: object
+      description: Summary of the reason for a movement.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Reason identifier.
+          example: 1
+        code:
+          type: string
+          description: Machine-readable reason code.
+          example: "SALE"
+        name:
+          type: string
+          description: Human-readable reason name.
+          example: "Venta"

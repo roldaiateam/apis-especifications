@@ -36,6 +36,8 @@ paths:
     $ref: './v1/services/movements/movements-inbound.yml'
   /v1/movements/inbound/receipts/{receiptId}:
     $ref: './v1/services/movements/movements-inbound-receipts-by-id.yml'
+  /v1/movements/search:
+    $ref: './v1/services/movements/movements-search.yml'
   /v1/inventory/search:
     $ref: './v1/services/inventory/inventory-search.yml'
 
