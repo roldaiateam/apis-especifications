@@ -1,0 +1,173 @@
+components:
+  schemas:
+    StockStatus:
+      type: string
+      description: >
+        Stock availability status derived from the inventory quantity.
+        - AVAILABLE: quantity greater than 0.
+        - OUT_OF_STOCK: quantity equal to 0.
+        MVP scope — LOW and BLOCKED statuses are deferred (they require reorder_point and a blocked flag).
+      enum:
+        - AVAILABLE
+        - OUT_OF_STOCK
+      example: "AVAILABLE"
+
+    SearchInventoryRequest:
+      type: object
+      description: >
+        Request payload to search and filter the inventory (stock) with pagination and sorting.
+        Each result row represents one inventory record — a batch located in a single location.
+        All filters are optional — an empty filters object returns all inventory rows.
+        The tenant is automatically resolved from the JWT token (claim: tenant_name).
+      properties:
+        filters:
+          $ref: '#/components/schemas/InventorySearchFilters'
+        page:
+          type: integer
+          format: int32
+          description: Zero-based page number. Defaults to 0.
+          minimum: 0
+          default: 0
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Number of items per page. Defaults to 20. Between 1 and 100.
+          minimum: 1
+          maximum: 100
+          default: 20
+          example: 20
+        sort:
+          type: array
+          description: >
+            Sort criteria applied in order of precedence.
+            Defaults to quantity ASC when omitted (lowest stock first).
+          items:
+            $ref: '#/components/schemas/InventorySortCriteria'
+
+    InventorySearchFilters:
+      type: object
+      description: >
+        Filter criteria for inventory search. All fields are optional and combined with AND.
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Filter by product identifier (via the batch). Must exist for the current tenant.
+          example: 42
+        locationId:
+          type: integer
+          format: int64
+          description: Filter by storage location identifier. Must exist for the current tenant.
+          example: 5
+        batchCode:
+          type: string
+          description: Exact match on the batch/lot code.
+          example: "L20260301"
+        categoryId:
+          type: integer
+          format: int64
+          description: Filter by the product category (resolved through batch to product).
+          example: 3
+        expiresWithinDays:
+          type: integer
+          format: int32
+          description: >
+            Returns rows whose batch has an expiration date informed and less than or equal to
+            today plus this number of days. Already-expired batches (expiration date before today)
+            ARE included. Rows whose batch has no expiration date are excluded.
+          minimum: 0
+          example: 30
+        stockStatus:
+          $ref: '#/components/schemas/StockStatus'
+
+    InventorySortCriteria:
+      type: object
+      description: Single sort criterion with field and direction.
+      required:
+        - field
+        - direction
+      properties:
+        field:
+          type: string
+          description: Field to sort by.
+          enum:
+            - quantity
+            - productName
+            - locationName
+          example: "quantity"
+        direction:
+          type: string
+          description: Sort direction.
+          enum:
+            - ASC
+            - DESC
+          example: "ASC"
+
+    SearchInventoryResponse:
+      type: object
+      description: Paginated response for inventory search.
+      properties:
+        page:
+          type: integer
+          format: int32
+          description: Current zero-based page number.
+          example: 0
+        size:
+          type: integer
+          format: int32
+          description: Requested page size.
+          example: 20
+        totalPages:
+          type: integer
+          format: int32
+          description: Total number of pages available.
+          example: 3
+        totalItems:
+          type: integer
+          format: int64
+          description: Total number of inventory rows matching the filters.
+          example: 42
+        items:
+          type: array
+          description: List of inventory rows for the current page.
+          items:
+            $ref: '#/components/schemas/InventoryStockItem'
+
+    InventoryStockItem:
+      type: object
+      description: >
+        A single inventory row returned by the search endpoint — the stock of one batch in one location.
+        Batch detail (expiration date, supplier, manufacturing date) is retrieved from a separate endpoint.
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Unique identifier of the inventory row.
+          example: 1001
+        quantity:
+          type: integer
+          format: int32
+          description: Current quantity of the batch available in the location.
+          example: 12
+        lastUpdated:
+          type: string
+          format: date-time
+          description: Timestamp of the last update to this inventory row (ISO 8601).
+          example: "2026-05-17T10:15:00Z"
+        productName:
+          type: string
+          description: Name of the product (resolved through the batch).
+          example: "Leche Entera 1L"
+        productSku:
+          type: string
+          description: SKU of the product (resolved through the batch).
+          example: "LECH-ENT-1L"
+        batchCode:
+          type: string
+          description: Batch/lot code of this inventory row.
+          example: "L20260301"
+        locationName:
+          type: string
+          description: Name of the location where the stock is held.
+          example: "Almacén Principal"
