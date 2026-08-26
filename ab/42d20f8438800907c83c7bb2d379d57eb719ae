@@ -1,0 +1,21 @@
+inventory/rest/v1/components/movements/components.yml
+  s_04497aa55eb3d4::t_331b4b8ed5fbc4 235-558
+inventory/rest/v1/services/movements/movements-search.yml
+  s_04497aa55eb3d4::t_c4664729f4017c 1-182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "ab42d20f8438800907c83c7bb2d379d57eb719ae",
+  "prompts": {},
+  "sessions": {
+    "s_04497aa55eb3d4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "404531f1-848b-4184-8613-1b3f90e6df10",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
