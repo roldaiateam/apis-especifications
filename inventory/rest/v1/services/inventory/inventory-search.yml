@@ -1,0 +1,125 @@
+post:
+  tags:
+    - Inventory
+  summary: Search inventory (stock)
+  description: >
+    Searches and filters the inventory (stock) with pagination and sorting.
+    Each result row represents one inventory record — a batch located in a single location.
+    Returns a paginated list of inventory rows matching the specified filters.
+    All filters are optional — an empty request body returns all inventory rows
+    with default pagination (page 0, size 20, sorted by quantity ASC — lowest stock first).
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Filter rules:
+    - productId and locationId, when provided, must reference an existing product/location;
+      otherwise the request is rejected with 400 (INVENTORY_SEARCH_VALIDATION).
+    - batchCode is an exact match.
+    - categoryId resolves through the batch to the product category.
+    - expiresWithinDays returns rows whose batch has an expiration date informed and <= today + N days;
+      already-expired batches are included, and rows with no expiration date are excluded.
+    - stockStatus filters on quantity (AVAILABLE = quantity > 0, OUT_OF_STOCK = quantity = 0).
+  operationId: searchInventory
+  requestBody:
+    description: Search criteria with optional filters, pagination and sorting
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/inventory/components.yml#/components/schemas/SearchInventoryRequest'
+        examples:
+          fullFilters:
+            summary: Search with multiple filters and sorting
+            value:
+              filters:
+                productId: 42
+                locationId: 5
+                batchCode: "L20260301"
+                categoryId: 3
+                expiresWithinDays: 30
+                stockStatus: "AVAILABLE"
+              page: 0
+              size: 20
+              sort:
+                - field: "quantity"
+                  direction: "ASC"
+          expiring:
+            summary: Rows expiring within 15 days (includes already expired)
+            value:
+              filters:
+                expiresWithinDays: 15
+              page: 0
+              size: 50
+              sort:
+                - field: "productName"
+                  direction: "ASC"
+          minimal:
+            summary: Default search — all inventory, first page
+            value: {}
+  responses:
+    '200':
+      description: Paginated list of inventory rows matching the search criteria
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/inventory/components.yml#/components/schemas/SearchInventoryResponse'
+          examples:
+            stockPage:
+              summary: Page of inventory rows
+              value:
+                page: 0
+                size: 20
+                totalPages: 3
+                totalItems: 42
+                items:
+                  - id: 1001
+                    quantity: 0
+                    lastUpdated: "2026-05-17T10:15:00Z"
+                    productName: "Leche Entera 1L"
+                    productSku: "LECH-ENT-1L"
+                    batchCode: "L20260301"
+                    locationName: "Almacén Principal"
+                  - id: 1002
+                    quantity: 12
+                    lastUpdated: "2026-05-16T09:00:00Z"
+                    productName: "Leche Entera 1L"
+                    productSku: "LECH-ENT-1L"
+                    batchCode: "L20260218"
+                    locationName: "Tienda Centro Madrid"
+            emptyResult:
+              summary: No inventory rows match the filters
+              value:
+                page: 0
+                size: 20
+                totalPages: 0
+                totalItems: 0
+                items: []
+    '400':
+      description: >
+        Invalid request — malformed filters, unsupported sort field, or a
+        productId/locationId that does not exist for the current tenant
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            productNotFound:
+              summary: productId does not exist
+              value:
+                errorCode: INVENTORY_SEARCH_VALIDATION
+                errorMessage: "Product with id 999 does not exist for current tenant"
+            locationNotFound:
+              summary: locationId does not exist
+              value:
+                errorCode: INVENTORY_SEARCH_VALIDATION
+                errorMessage: "Location with id 999 does not exist for current tenant"
+            invalidSortField:
+              summary: Unsupported sort field
+              value:
+                errorCode: INVENTORY_SEARCH_VALIDATION
+                errorMessage: "Invalid sort field 'name'. Allowed values: quantity, productName, locationName"
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
