@@ -1,0 +1,27 @@
+inventory/rest/metadata.yml
+  s_1d29ef12e32b6b::t_c4546c291e0afe 6
+inventory/rest/openapi-rest.yml
+  s_1d29ef12e32b6b::t_d202abab8d8cd6 10,39-42
+inventory/rest/v1/components/movements/components.yml
+  s_1d29ef12e32b6b::t_18d20b1b0d9e96 184-331,370
+inventory/rest/v1/services/movements/movements-outbound-receipts-by-id.yml
+  s_1d29ef12e32b6b::t_779939619973ae 1-76
+inventory/rest/v1/services/movements/movements-outbound.yml
+  s_1d29ef12e32b6b::t_b594427a1bbc8b 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7840d54f97f06c56999e2ff6411c4dda96c544fb",
+  "prompts": {},
+  "sessions": {
+    "s_1d29ef12e32b6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_1d29ef12e32b6b",
+        "model": "unknown"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
