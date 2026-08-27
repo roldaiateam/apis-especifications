@@ -1,0 +1,76 @@
+get:
+  tags:
+    - Inventory
+  summary: Get outbound receipt by ID
+  description: >
+    Retrieves the current processing state of an outbound stock receipt by its unique identifier.
+    Useful for checking the per-item outcome after the initial POST.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+  operationId: getOutboundReceipt
+  parameters:
+    - name: receiptId
+      in: path
+      required: true
+      description: Unique identifier of the outbound receipt to retrieve.
+      schema:
+        $ref: '../../components/movements/components.yml#/components/schemas/ReceiptId'
+  responses:
+    '200':
+      description: Outbound receipt retrieved successfully
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/OutboundReceiptResponse'
+          examples:
+            completed:
+              summary: All items processed successfully
+              value:
+                receiptId: 7
+                status: COMPLETED
+                totalItems: 1
+                completedItems: 1
+                failedItems: 0
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 501
+                    productId: 42
+            completedWithErrors:
+              summary: One item failed for insufficient stock
+              value:
+                receiptId: 8
+                status: COMPLETED_WITH_ERRORS
+                totalItems: 2
+                completedItems: 1
+                failedItems: 1
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 502
+                    productId: 42
+                  - index: 1
+                    status: FAILED
+                    productId: 43
+                    errorCode: INSUFFICIENT_STOCK
+                    errorMessage: "Stock disponible insuficiente para el producto 43 en la ubicación 5"
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      description: Receipt not found for the current tenant
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            receiptNotFound:
+              summary: Receipt does not exist
+              value:
+                errorCode: RECEIPT_NOT_FOUND
+                errorMessage: "Outbound receipt with id 99 not found"
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

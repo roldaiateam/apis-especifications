@@ -181,6 +181,154 @@ components:
           description: Human-readable error description. Present only when status is FAILED or PENDING_RETRY.
           example: "Product with id 43 not found"
 
+    RegisterOutboundBulkRequest:
+      type: object
+      description: >
+        Request payload to register one or more outbound stock movements in a single operation.
+        documentReference and notes apply to the entire receipt and are shared across all items.
+        Each item in the items array is processed independently — partial failures are reported
+        per item in the response without rolling back successfully processed items.
+      required:
+        - items
+      properties:
+        documentReference:
+          type: string
+          description: Reference to the source document (sales ticket, consumption note, etc.). Applies to all items.
+          minLength: 1
+          maxLength: 100
+          example: "TCK-2026-00123"
+        notes:
+          type: string
+          description: General notes about the outbound operation. Applies to all items.
+          minLength: 1
+          maxLength: 1000
+          example: "Cierre de caja turno mañana"
+        items:
+          type: array
+          description: List of outbound stock movements to register. Between 1 and 100 items per request.
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RegisterOutboundItemInput'
+
+    RegisterOutboundItemInput:
+      type: object
+      description: >
+        Individual outbound stock movement within a bulk request.
+        The requested quantity is consumed from the product's active batches at the given location
+        following the FEFO strategy (expiryDate ASC, batches without expiry last, then createdAt ASC).
+        A single item may consume several batches, generating one OUT movement per affected batch.
+        Business rules:
+        - productId, locationId and reasonId must exist; product and location must be active.
+        - quantity must be > 0.
+        - If the total available stock does not cover quantity, the item fails with INSUFFICIENT_STOCK.
+        - employee_id is resolved automatically from the JWT token — do NOT include it in the request.
+      required:
+        - productId
+        - locationId
+        - quantity
+        - reasonId
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Identifier of the product being withdrawn. Must exist and be active.
+          example: 42
+        locationId:
+          type: integer
+          format: int64
+          description: Identifier of the source storage location. Must exist and be active. Maps to from_location_id in inventory_movement.
+          example: 5
+        quantity:
+          type: integer
+          format: int32
+          description: Number of units to withdraw. Must be greater than 0.
+          minimum: 1
+          example: 30
+        reasonId:
+          type: integer
+          format: int64
+          description: Identifier of the movement reason (SALE, INTERNAL_CONSUMPTION, EXPIRY, OTHER). Foreign key to movement_reason.
+          example: 1
+        movementDate:
+          type: string
+          format: date-time
+          description: Date and time of the movement (ISO 8601). Defaults to current server time when omitted.
+          example: "2026-05-17T10:15:00Z"
+
+    OutboundReceiptResponse:
+      type: object
+      description: >
+        Response for an outbound bulk registration operation. Returned immediately on POST (201)
+        and on subsequent GET by receiptId. Reflects the current processing state of each item.
+      properties:
+        receiptId:
+          $ref: '#/components/schemas/ReceiptId'
+        status:
+          $ref: '#/components/schemas/ReceiptStatus'
+        totalItems:
+          type: integer
+          format: int32
+          description: Total number of items submitted in the original request.
+          example: 2
+        completedItems:
+          type: integer
+          format: int32
+          description: Number of items successfully processed.
+          example: 1
+        failedItems:
+          type: integer
+          format: int32
+          description: Number of items that failed permanently.
+          example: 1
+        pendingRetryItems:
+          type: integer
+          format: int32
+          description: Number of items pending retry due to transient errors.
+          example: 0
+        results:
+          type: array
+          description: Per-item processing result, preserving the original submission order via index.
+          items:
+            $ref: '#/components/schemas/OutboundReceiptItemResult'
+
+    OutboundReceiptItemResult:
+      type: object
+      description: >
+        Processing result for a single item within an outbound bulk receipt.
+        When the item consumes several batches (FEFO), movementId reflects the representative
+        movement; the full set of generated movements is available via the movements search endpoint.
+      required:
+        - index
+        - status
+        - productId
+      properties:
+        index:
+          type: integer
+          format: int32
+          description: Zero-based position of the item in the original items array.
+          example: 0
+        status:
+          $ref: '#/components/schemas/ReceiptItemStatus'
+        movementId:
+          type: integer
+          format: int64
+          description: Identifier of the representative OUT movement. Present only when status is COMPLETED.
+          example: 501
+        productId:
+          type: integer
+          format: int64
+          description: Identifier of the product from the original item, for traceability.
+          example: 42
+        errorCode:
+          type: string
+          description: Machine-readable error code. Present only when status is FAILED or PENDING_RETRY.
+          example: "INSUFFICIENT_STOCK"
+        errorMessage:
+          type: string
+          description: Human-readable error description. Present only when status is FAILED or PENDING_RETRY.
+          example: "Stock disponible insuficiente"
+
     ReceiptStatus:
       type: string
       description: >
@@ -219,7 +367,7 @@ components:
     MovementType:
       type: string
       description: >
-        Type of inventory movement.
+        Type of inventory movements.
         - IN: inbound stock entry (purchase from supplier).
         - OUT: outbound stock exit (sale or consumption).
         - ADJUSTMENT: manual stock correction.
