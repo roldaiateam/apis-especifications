@@ -1,0 +1,94 @@
+post:
+  tags:
+    - Inventory
+  summary: Register stock transfers between locations
+  description: >
+    Registers one or more stock transfers of an existing batch from one location to another.
+    Each item is processed independently — partial failures are reported per item
+    without rolling back successfully processed ones.
+    A successfully processed item generates a single TRANSFER movement carrying both the
+    source and destination location — never a pair of separate movements.
+    On success, returns a receipt with the processing result for each item.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Business rules per item:
+    - batchId, fromLocationId and toLocationId must exist.
+    - the product owning the batch must be active; fromLocationId and toLocationId must be active.
+    - fromLocationId and toLocationId must be different.
+    - quantity must be > 0 and must not exceed the available stock of the batch at fromLocationId.
+    - employee_id is extracted automatically from the JWT — do NOT include it in the request.
+  operationId: registerTransferMovement
+  requestBody:
+    description: One or more stock transfers to register
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/RegisterTransferBulkRequest'
+        examples:
+          singleTransfer:
+            summary: Single item — typical transfer of one batch
+            value:
+              documentReference: "TRF-2026-0007"
+              notes: "Reposición tienda Centro"
+              items:
+                - batchId: 311
+                  fromLocationId: 3
+                  toLocationId: 5
+                  quantity: 20
+                  movementDate: "2026-09-15T10:00:00Z"
+  responses:
+    '201':
+      description: Receipt created. Check status and results for per-item outcome.
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/TransferReceiptResponse'
+          examples:
+            allCompleted:
+              summary: All items processed successfully
+              value:
+                receiptId: 10
+                status: COMPLETED
+                totalItems: 1
+                completedItems: 1
+                failedItems: 0
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 601
+                    batchId: 311
+            completedWithErrors:
+              summary: Item failed due to insufficient stock at origin
+              value:
+                receiptId: 11
+                status: COMPLETED_WITH_ERRORS
+                totalItems: 1
+                completedItems: 0
+                failedItems: 1
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: FAILED
+                    batchId: 311
+                    errorCode: INSUFFICIENT_STOCK
+                    errorMessage: "Stock disponible insuficiente en la ubicación de origen"
+    '400':
+      description: Request-level validation error — malformed payload or items array constraints violated
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            emptyItems:
+              summary: items array is empty or missing
+              value:
+                errorCode: MOVEMENT_TRANSFER_VALIDATION
+                errorMessage: items array must contain between 1 and 100 elements
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
