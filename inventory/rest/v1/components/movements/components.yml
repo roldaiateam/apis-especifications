@@ -329,6 +329,154 @@ components:
           description: Human-readable error description. Present only when status is FAILED or PENDING_RETRY.
           example: "Stock disponible insuficiente"
 
+    RegisterTransferBulkRequest:
+      type: object
+      description: >
+        Request payload to register one or more stock transfers in a single operation.
+        documentReference and notes apply to the entire operation and are shared across all items.
+        Each item in the items array is processed independently — partial failures are reported
+        per item in the response without rolling back successfully processed items.
+      required:
+        - items
+      properties:
+        documentReference:
+          type: string
+          description: Reference to the source document, if any. Applies to all items.
+          minLength: 1
+          maxLength: 100
+          example: "TRF-2026-0007"
+        notes:
+          type: string
+          description: General notes about the transfer operation. Applies to all items.
+          minLength: 1
+          maxLength: 1000
+          example: "Reposición tienda Centro"
+        items:
+          type: array
+          description: List of stock transfers to register. Between 1 and 100 items per request.
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RegisterTransferItemInput'
+
+    RegisterTransferItemInput:
+      type: object
+      description: >
+        Individual stock transfer within a bulk request. Moves a specific, already-existing batch
+        from one location to another. Unlike outbound movements, the batch is selected explicitly
+        by the caller — there is no automatic FEFO selection across batches.
+        Business rules:
+        - batchId, fromLocationId and toLocationId must exist.
+        - the product owning the batch must be active; fromLocationId and toLocationId must be active.
+        - fromLocationId and toLocationId must be different.
+        - quantity must be > 0 and must not exceed the available stock of the batch at fromLocationId.
+        - employee_id is resolved automatically from the JWT token — do NOT include it in the request.
+      required:
+        - batchId
+        - fromLocationId
+        - toLocationId
+        - quantity
+      properties:
+        batchId:
+          type: integer
+          format: int64
+          description: Identifier of the existing batch to move. Must have available stock at fromLocationId.
+          example: 311
+        fromLocationId:
+          type: integer
+          format: int64
+          description: Identifier of the source storage location. Must exist, be active, and differ from toLocationId.
+          example: 3
+        toLocationId:
+          type: integer
+          format: int64
+          description: Identifier of the destination storage location. Must exist, be active, and differ from fromLocationId.
+          example: 5
+        quantity:
+          type: integer
+          format: int32
+          description: Number of units to transfer. Must be greater than 0 and available at the source location.
+          minimum: 1
+          example: 20
+        movementDate:
+          type: string
+          format: date-time
+          description: Date and time of the movement (ISO 8601). Defaults to current server time when omitted.
+          example: "2026-09-15T10:00:00Z"
+
+    TransferReceiptResponse:
+      type: object
+      description: >
+        Response for a stock transfer bulk registration operation. Returned immediately on POST (201)
+        and on subsequent GET by receiptId. Reflects the current processing state of each item.
+      properties:
+        receiptId:
+          $ref: '#/components/schemas/ReceiptId'
+        status:
+          $ref: '#/components/schemas/ReceiptStatus'
+        totalItems:
+          type: integer
+          format: int32
+          description: Total number of items submitted in the original request.
+          example: 1
+        completedItems:
+          type: integer
+          format: int32
+          description: Number of items successfully processed.
+          example: 1
+        failedItems:
+          type: integer
+          format: int32
+          description: Number of items that failed permanently.
+          example: 0
+        pendingRetryItems:
+          type: integer
+          format: int32
+          description: Number of items pending retry due to transient errors.
+          example: 0
+        results:
+          type: array
+          description: Per-item processing result, preserving the original submission order via index.
+          items:
+            $ref: '#/components/schemas/TransferReceiptItemResult'
+
+    TransferReceiptItemResult:
+      type: object
+      description: >
+        Processing result for a single item within a transfer bulk receipt. A successfully processed
+        item always generates exactly one TRANSFER movement, carrying both fromLocationId and
+        toLocationId — never a pair of separate movements.
+      required:
+        - index
+        - status
+        - batchId
+      properties:
+        index:
+          type: integer
+          format: int32
+          description: Zero-based position of the item in the original items array.
+          example: 0
+        status:
+          $ref: '#/components/schemas/ReceiptItemStatus'
+        movementId:
+          type: integer
+          format: int64
+          description: Identifier of the created TRANSFER inventory movement record. Present only when status is COMPLETED.
+          example: 601
+        batchId:
+          type: integer
+          format: int64
+          description: Identifier of the batch from the original item, for traceability.
+          example: 311
+        errorCode:
+          type: string
+          description: Machine-readable error code. Present only when status is FAILED or PENDING_RETRY.
+          example: "INSUFFICIENT_STOCK"
+        errorMessage:
+          type: string
+          description: Human-readable error description. Present only when status is FAILED or PENDING_RETRY.
+          example: "Stock disponible insuficiente en la ubicación de origen"
+
     ReceiptStatus:
       type: string
       description: >
