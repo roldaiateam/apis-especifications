@@ -1,0 +1,21 @@
+inventory/rest/v1/services/movements/movements-transfer-receipts-by-id.yml
+  s_3fd6ea2b870c94::t_04b8c29484d2c9 1-72
+inventory/rest/v1/services/movements/movements-transfer.yml
+  s_3fd6ea2b870c94::t_6d4598392cbc13 1-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b45d8012cdbf55ced23064da12cc45e6dc93de6",
+  "prompts": {},
+  "sessions": {
+    "s_3fd6ea2b870c94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2911e9cb-cf25-4282-85a1-896f43a5d3b8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
