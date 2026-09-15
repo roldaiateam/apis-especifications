@@ -1,0 +1,113 @@
+post:
+  tags:
+    - Inventory
+  summary: Register outbound stock movements (FEFO)
+  description: >
+    Registers one or more outbound stock exits (sale, internal consumption, expiry, other)
+    in a single bulk request, applying the FEFO strategy (First Expired First Out).
+    Each item is processed independently — partial failures are reported per item
+    without rolling back successfully processed ones.
+    On success, returns a receipt with the processing result for each item.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Business rules per item:
+    - productId, locationId and reasonId must exist; product and location must be active.
+    - quantity must be > 0.
+    - The available stock at the location is consumed from active batches (is_active=true, quantity>0),
+      ordered by expiryDate ASC (batches without expiry last), then createdAt ASC.
+    - A single item may consume several batches, generating one OUT movement per affected batch.
+    - If the total available stock does not cover the requested quantity, the item fails with INSUFFICIENT_STOCK.
+    - employee_id is extracted automatically from the JWT — do NOT include it in the request.
+    Per-item error codes reported in results: INSUFFICIENT_STOCK, PRODUCT_NOT_FOUND, PRODUCT_INACTIVE,
+    LOCATION_NOT_FOUND, LOCATION_INACTIVE, MOVEMENT_REASON_NOT_FOUND.
+  operationId: registerOutboundMovement
+  requestBody:
+    description: Bulk request with one or more outbound stock movements to register
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/RegisterOutboundBulkRequest'
+        examples:
+          partialSuccess:
+            summary: Two items — one succeeds, one runs out of stock
+            value:
+              documentReference: "TCK-2026-00123"
+              notes: "Cierre de caja turno mañana"
+              items:
+                - productId: 42
+                  locationId: 5
+                  quantity: 30
+                  reasonId: 1
+                  movementDate: "2026-05-17T10:15:00Z"
+                - productId: 43
+                  locationId: 5
+                  quantity: 12
+                  reasonId: 2
+          minimal:
+            summary: Single item — minimal required fields
+            value:
+              items:
+                - productId: 10
+                  locationId: 2
+                  quantity: 5
+                  reasonId: 1
+  responses:
+    '201':
+      description: Receipt created. Check status and results for per-item outcome.
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/OutboundReceiptResponse'
+          examples:
+            completedWithErrors:
+              summary: One item succeeded, one failed for insufficient stock
+              value:
+                receiptId: 7
+                status: COMPLETED_WITH_ERRORS
+                totalItems: 2
+                completedItems: 1
+                failedItems: 1
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 501
+                    productId: 42
+                  - index: 1
+                    status: FAILED
+                    productId: 43
+                    errorCode: INSUFFICIENT_STOCK
+                    errorMessage: "Stock disponible insuficiente para el producto 43 en la ubicación 5"
+            allCompleted:
+              summary: All items processed successfully
+              value:
+                receiptId: 8
+                status: COMPLETED
+                totalItems: 1
+                completedItems: 1
+                failedItems: 0
+                pendingRetryItems: 0
+                results:
+                  - index: 0
+                    status: COMPLETED
+                    movementId: 502
+                    productId: 10
+    '400':
+      description: Request-level validation error — malformed payload or items array constraints violated
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            emptyItems:
+              summary: items array is empty or missing
+              value:
+                errorCode: MOVEMENT_OUTBOUND_VALIDATION
+                errorMessage: items array must contain between 1 and 100 elements
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
