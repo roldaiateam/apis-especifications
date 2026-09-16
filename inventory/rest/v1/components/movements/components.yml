@@ -366,17 +366,23 @@ components:
         from one location to another. Unlike outbound movements, the batch is selected explicitly
         by the caller — there is no automatic FEFO selection across batches.
         Business rules:
-        - batchId, fromLocationId and toLocationId must exist.
-        - the product owning the batch must be active; fromLocationId and toLocationId must be active.
+        - productId, batchId, fromLocationId and toLocationId must exist.
+        - the product must be active; fromLocationId and toLocationId must be active.
         - fromLocationId and toLocationId must be different.
         - quantity must be > 0 and must not exceed the available stock of the batch at fromLocationId.
         - employee_id is resolved automatically from the JWT token — do NOT include it in the request.
       required:
+        - productId
         - batchId
         - fromLocationId
         - toLocationId
         - quantity
       properties:
+        productId:
+          type: integer
+          format: int64
+          description: Identifier of the product owning the batch. Must exist and be active.
+          example: 42
         batchId:
           type: integer
           format: int64

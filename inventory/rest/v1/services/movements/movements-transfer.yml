@@ -32,7 +32,8 @@ post:
               documentReference: "TRF-2026-0007"
               notes: "Reposición tienda Centro"
               items:
-                - batchId: 311
+                - productId: 42
+                  batchId: 311
                   fromLocationId: 3
                   toLocationId: 5
                   quantity: 20
