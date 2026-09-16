@@ -1,0 +1,16 @@
+inventory/rest/v1/components/movements/components.yml
+  h_75a6f6cb0b11a1 369-370,375,381-385
+inventory/rest/v1/services/movements/movements-transfer.yml
+  h_75a6f6cb0b11a1 35-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aca8f2ec5ab535d70fe94689d999aaf4b03f816d",
+  "prompts": {},
+  "humans": {
+    "h_75a6f6cb0b11a1": {
+      "author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
