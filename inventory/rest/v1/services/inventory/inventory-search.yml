@@ -4,7 +4,10 @@ post:
   summary: Search inventory (stock)
   description: >
     Searches and filters the inventory (stock) with pagination and sorting.
-    Each result row represents one inventory record — a batch located in a single location.
+    Each result row represents the projected stock of one product in one location
+    (Stock_Inventory, the aggregate root) — quantity is the total across all of its batches.
+    Batch-level detail is not part of this response; it is planned as a separate, dedicated
+    endpoint in the future.
     Returns a paginated list of inventory rows matching the specified filters.
     All filters are optional — an empty request body returns all inventory rows
     with default pagination (page 0, size 20, sorted by quantity ASC — lowest stock first).
@@ -13,11 +16,12 @@ post:
     Filter rules:
     - productId and locationId, when provided, must reference an existing product/location;
       otherwise the request is rejected with 400 (INVENTORY_SEARCH_VALIDATION).
-    - batchCode is an exact match.
-    - categoryId resolves through the batch to the product category.
-    - expiresWithinDays returns rows whose batch has an expiration date informed and <= today + N days;
-      already-expired batches are included, and rows with no expiration date are excluded.
-    - stockStatus filters on quantity (AVAILABLE = quantity > 0, OUT_OF_STOCK = quantity = 0).
+    - batchCode and expiresWithinDays filter on the row's underlying batch detail even though
+      that detail is not returned — a row matches if ANY of its batches satisfies the condition.
+    - categoryId filters by the product category.
+    - expiresWithinDays: already-expired batches are included; batches with no expiration date
+      never match.
+    - stockStatus filters on the row total (AVAILABLE = quantity > 0, OUT_OF_STOCK = quantity = 0).
   operationId: searchInventory
   requestBody:
     description: Search criteria with optional filters, pagination and sorting
@@ -43,7 +47,7 @@ post:
                 - field: "quantity"
                   direction: "ASC"
           expiring:
-            summary: Rows expiring within 15 days (includes already expired)
+            summary: Rows with a batch expiring within 15 days (includes already expired)
             value:
               filters:
                 expiresWithinDays: 15
@@ -64,27 +68,29 @@ post:
             $ref: '../../components/inventory/components.yml#/components/schemas/SearchInventoryResponse'
           examples:
             stockPage:
-              summary: Page of inventory rows
+              summary: Page of inventory rows, one per product/location
               value:
                 page: 0
                 size: 20
-                totalPages: 3
-                totalItems: 42
+                totalPages: 2
+                totalItems: 24
                 items:
                   - id: 1001
-                    quantity: 0
-                    lastUpdated: "2026-05-17T10:15:00Z"
+                    productId: 42
                     productName: "Leche Entera 1L"
                     productSku: "LECH-ENT-1L"
-                    batchCode: "L20260301"
-                    locationName: "Almacén Principal"
-                  - id: 1002
-                    quantity: 12
-                    lastUpdated: "2026-05-16T09:00:00Z"
-                    productName: "Leche Entera 1L"
-                    productSku: "LECH-ENT-1L"
-                    batchCode: "L20260218"
+                    locationId: 5
                     locationName: "Tienda Centro Madrid"
+                    quantity: 12
+                    lastUpdated: "2026-05-17T10:15:00Z"
+                  - id: 1002
+                    productId: 43
+                    productName: "Yogur Natural Pack 4"
+                    productSku: "YOG-NAT-4"
+                    locationId: 2
+                    locationName: "Almacén Principal"
+                    quantity: 0
+                    lastUpdated: "2026-05-16T09:00:00Z"
             emptyResult:
               summary: No inventory rows match the filters
               value:
