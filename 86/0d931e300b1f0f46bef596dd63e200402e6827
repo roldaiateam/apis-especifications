@@ -1,0 +1,28 @@
+inventory/rest/metadata.yml
+  h_75a6f6cb0b11a1 6
+inventory/rest/openapi-rest.yml
+  h_75a6f6cb0b11a1 10
+inventory/rest/v1/components/inventory/components.yml
+  h_75a6f6cb0b11a1 19-21,54-56,61,70-71,76,82-84,146-148,153,155,157-159,162,166,168-172,177-186
+inventory/rest/v1/components/movements/components.yml
+  h_75a6f6cb0b11a1 7-9,24-26,42-53,118-120,137-139,150-161,193-196,211-214,216-217,219-220,228-239,243,248-250,265-267,276,279-284,288,290,292,295-297,300,307-310,314-315,318-319,322-323
+inventory/rest/v1/services/inventory/inventory-search.yml
+  h_75a6f6cb0b11a1 7-10,19-24,50,71,75-76,79,82-83,85-92
+inventory/rest/v1/services/movements/movements-inbound.yml
+  h_75a6f6cb0b11a1 7-10,22,42,52,66,70,72-73,77,80,83-84,88
+inventory/rest/v1/services/movements/movements-outbound.yml
+  h_75a6f6cb0b11a1 6-14,20,22,26,34,41,47,58,62,64-65,69,72-76,80
+inventory/rest/v1/services/movements/movements-transfer.yml
+  h_75a6f6cb0b11a1 6-14,18-19,21,33,41,43-50,53,57,59-60,64,66-67,71-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "860d931e300b1f0f46bef596dd63e200402e6827",
+  "prompts": {},
+  "humans": {
+    "h_75a6f6cb0b11a1": {
+      "author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
