@@ -4,9 +4,10 @@ post:
   summary: Register inbound stock movements
   description: >
     Registers one or more inbound stock entries resulting from a supplier delivery.
-    Each item is processed independently — partial failures are reported per item
-    without rolling back successfully processed ones.
-    On success, returns a receipt with the processing result for each item.
+    Each item is validated and persisted independently, in its own transaction (event +
+    projection task) — a rejected item does not affect the others. Registration is synchronous;
+    the response reflects the final accepted/rejected outcome of every item, there is no receipt
+    to poll and no async status.
     The tenant is automatically resolved from the JWT token (claim: tenant_name).
     Requires role: store_admin.
     Business rules per item:
@@ -18,7 +19,7 @@ post:
     - employee_id is extracted automatically from the JWT — do NOT include it in the request.
   operationId: registerInboundMovement
   requestBody:
-    description: Delivery receipt with one or more inbound stock movements to register
+    description: One or more inbound stock movements to register
     required: true
     content:
       application/json:
@@ -28,8 +29,6 @@ post:
           partialSuccess:
             summary: Two items — one succeeds, one fails
             value:
-              documentReference: "FAC-2026-0042"
-              notes: "Entrega proveedor Lacteos SA — 15 julio"
               items:
                 - productId: 42
                   supplierId: 7
@@ -40,6 +39,7 @@ post:
                   manufacturingDate: "2026-05-01"
                   unitCost: 2.50
                   unitCostCurrencyId: 1
+                  documentReference: "FAC-2026-0042"
                   movementDate: "2026-07-06T10:00:00Z"
                 - productId: 43
                   supplierId: 7
@@ -49,6 +49,7 @@ post:
                   expiryDate: "2027-03-01"
                   unitCost: 1.80
                   unitCostCurrencyId: 1
+                  documentReference: "FAC-2026-0042"
                   movementDate: "2026-07-06T10:00:00Z"
           minimal:
             summary: Single item — minimal required fields
@@ -62,45 +63,30 @@ post:
                   unitCostCurrencyId: 1
   responses:
     '201':
-      description: Receipt created. Check status and results for per-item outcome.
+      description: Items registered. Check accepted/errorCode per result for the outcome of each item.
       content:
         application/json:
           schema:
-            $ref: '../../components/movements/components.yml#/components/schemas/InboundReceiptResponse'
+            $ref: '../../components/movements/components.yml#/components/schemas/MovementRegistrationResponse'
           examples:
-            completedWithErrors:
-              summary: One item succeeded, one failed
+            partialSuccess:
+              summary: One item accepted, one rejected
               value:
-                receiptId: 1
-                status: COMPLETED_WITH_ERRORS
-                totalItems: 2
-                completedItems: 1
-                failedItems: 1
-                pendingRetryItems: 0
                 results:
                   - index: 0
-                    status: COMPLETED
+                    accepted: true
                     movementId: 101
-                    productId: 42
                   - index: 1
-                    status: FAILED
-                    productId: 43
+                    accepted: false
                     errorCode: PRODUCT_NOT_FOUND
                     errorMessage: "Product with id 43 not found"
-            allCompleted:
-              summary: All items processed successfully
+            allAccepted:
+              summary: All items registered successfully
               value:
-                receiptId: 2
-                status: COMPLETED
-                totalItems: 1
-                completedItems: 1
-                failedItems: 0
-                pendingRetryItems: 0
                 results:
                   - index: 0
-                    status: COMPLETED
+                    accepted: true
                     movementId: 102
-                    productId: 10
     '400':
       description: Request-level validation error — malformed payload or items array constraints violated
       content:

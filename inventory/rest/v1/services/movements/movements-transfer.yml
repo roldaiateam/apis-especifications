@@ -3,19 +3,22 @@ post:
     - Inventory
   summary: Register stock transfers between locations
   description: >
-    Registers one or more stock transfers of an existing batch from one location to another.
-    Each item is processed independently — partial failures are reported per item
-    without rolling back successfully processed ones.
-    A successfully processed item generates a single TRANSFER movement carrying both the
-    source and destination location — never a pair of separate movements.
-    On success, returns a receipt with the processing result for each item.
+    Registers one or more stock transfers from one location to another. Each item generates a
+    single TRANSFER movement carrying both fromLocationId and toLocationId — never a pair of
+    separate movements. batchId is optional: when omitted, the transfer is not tied to a
+    specific batch.
+    Each item is validated and persisted independently, in its own transaction (one TRANSFER
+    event + two projection tasks, one per side) — a rejected item does not affect the others.
+    There is no available-stock check: the source location is allowed to go negative.
+    Registration is synchronous; the response reflects the final accepted/rejected outcome of
+    every item, there is no receipt to poll and no async status.
     The tenant is automatically resolved from the JWT token (claim: tenant_name).
     Requires role: store_admin.
     Business rules per item:
-    - batchId, fromLocationId and toLocationId must exist.
-    - the product owning the batch must be active; fromLocationId and toLocationId must be active.
+    - productId, fromLocationId and toLocationId must exist; the product and both locations must be active.
+    - batchId, when present, must exist and belong to productId.
     - fromLocationId and toLocationId must be different.
-    - quantity must be > 0 and must not exceed the available stock of the batch at fromLocationId.
+    - quantity must be > 0.
     - employee_id is extracted automatically from the JWT — do NOT include it in the request.
   operationId: registerTransferMovement
   requestBody:
@@ -27,54 +30,47 @@ post:
           $ref: '../../components/movements/components.yml#/components/schemas/RegisterTransferBulkRequest'
         examples:
           singleTransfer:
-            summary: Single item — typical transfer of one batch
+            summary: Single item — transfer of one specific batch
             value:
-              documentReference: "TRF-2026-0007"
-              notes: "Reposición tienda Centro"
               items:
                 - productId: 42
                   batchId: 311
                   fromLocationId: 3
                   toLocationId: 5
                   quantity: 20
+                  documentReference: "TRF-2026-0007"
                   movementDate: "2026-09-15T10:00:00Z"
+          untrackedByBatch:
+            summary: Single item — transfer not tied to a batch
+            value:
+              items:
+                - productId: 42
+                  fromLocationId: 3
+                  toLocationId: 5
+                  quantity: 20
   responses:
     '201':
-      description: Receipt created. Check status and results for per-item outcome.
+      description: Items registered. Check accepted/errorCode per result for the outcome of each item.
       content:
         application/json:
           schema:
-            $ref: '../../components/movements/components.yml#/components/schemas/TransferReceiptResponse'
+            $ref: '../../components/movements/components.yml#/components/schemas/MovementRegistrationResponse'
           examples:
-            allCompleted:
-              summary: All items processed successfully
+            allAccepted:
+              summary: Item registered successfully
               value:
-                receiptId: 10
-                status: COMPLETED
-                totalItems: 1
-                completedItems: 1
-                failedItems: 0
-                pendingRetryItems: 0
                 results:
                   - index: 0
-                    status: COMPLETED
+                    accepted: true
                     movementId: 601
-                    batchId: 311
-            completedWithErrors:
-              summary: Item failed due to insufficient stock at origin
+            partialFailure:
+              summary: Item rejected — batch does not belong to the product
               value:
-                receiptId: 11
-                status: COMPLETED_WITH_ERRORS
-                totalItems: 1
-                completedItems: 0
-                failedItems: 1
-                pendingRetryItems: 0
                 results:
                   - index: 0
-                    status: FAILED
-                    batchId: 311
-                    errorCode: INSUFFICIENT_STOCK
-                    errorMessage: "Stock disponible insuficiente en la ubicación de origen"
+                    accepted: false
+                    errorCode: BATCH_NOT_FOUND
+                    errorMessage: "Batch 311 does not belong to product 42"
     '400':
       description: Request-level validation error — malformed payload or items array constraints violated
       content:
