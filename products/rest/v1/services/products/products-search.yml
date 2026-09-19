@@ -62,6 +62,7 @@ post:
                     sku: "LECH-ENT-1L"
                     name: "Leche Entera 1L"
                     brand: "Pascual"
+                    description: "Leche entera pasteurizada de 1 litro"
                     active: true
                     category:
                       id: 10
@@ -79,6 +80,7 @@ post:
                     sku: "LECH-DES-1L"
                     name: "Leche Desnatada 1L"
                     brand: "Pascual"
+                    description: "Leche desnatada pasteurizada de 1 litro"
                     active: true
                     category:
                       id: 10
