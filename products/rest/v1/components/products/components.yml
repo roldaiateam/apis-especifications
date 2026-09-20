@@ -338,6 +338,11 @@ components:
           description: Brand of the product.
           maxLength: 100
           example: "Pascual"
+        description:
+          type: string
+          description: Optional free-text description of the product.
+          maxLength: 500
+          example: "Leche entera pasteurizada de 1 litro"
         active:
           type: boolean
           description: Whether the product is currently active.
