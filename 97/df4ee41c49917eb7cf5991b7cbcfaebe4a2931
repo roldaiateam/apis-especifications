@@ -1,0 +1,29 @@
+inventory/rest/metadata.yml
+  s_15e2e5cbdec89a::t_ffc230f5cce38e 6
+inventory/rest/openapi-rest.yml
+  s_15e2e5cbdec89a::t_13ffa5b15799ee 10
+inventory/rest/v1/components/movement-types/components.yml
+  s_15e2e5cbdec89a::t_eeb5fdceafd2cb 24
+inventory/rest/v1/components/movements/components.yml
+  s_15e2e5cbdec89a::t_5f1d7102a4bdc8 332-339,415,508-515,539-541,545-547,554-557,645-646,657-677
+inventory/rest/v1/services/movement-types/movement-types-get-all.yml
+  s_15e2e5cbdec89a::t_716eac90f830ef 7
+inventory/rest/v1/services/movements/movements-search.yml
+  s_15e2e5cbdec89a::t_067f7a22fd8069 94-99,134,138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "97df4ee41c49917eb7cf5991b7cbcfaebe4a2931",
+  "prompts": {},
+  "sessions": {
+    "s_15e2e5cbdec89a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "291bcfc8-4d07-43c4-a165-5dba6f3be3d0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
