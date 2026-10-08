@@ -329,14 +329,19 @@ components:
         - IN: inbound stock entry (purchase from supplier).
         - OUT: outbound stock exit (sale or consumption).
         - ADJUSTMENT: manual stock correction.
-        - TRANSFER: stock moved between locations.
-        - COMPENSATION: compensatory adjustment.
+        Every movement goes from an origin location to a destination location; locations
+        outside the warehouse are modelled as virtual locations (see LocationUsage).
+        - IN: inbound stock entry (from the SUPPLIER virtual location to an internal location).
+        - OUT: outbound stock exit (from an internal location to the virtual location given by
+          the reason: CUSTOMER, INTERNAL_CONSUMPTION or LOSS).
+        - ADJUSTMENT: manual stock correction (between an internal location and the ADJUSTMENT
+          virtual location).
+        - TRANSFER: stock moved between two internal locations.
       enum:
         - IN
         - OUT
         - ADJUSTMENT
         - TRANSFER
-        - COMPENSATION
       example: "IN"
 
     SearchMovementsRequest:
@@ -407,7 +412,7 @@ components:
         movementTypeId:
           type: integer
           format: int64
-          description: Filter by movement type identifier (IN, OUT, ADJUSTMENT, TRANSFER, COMPENSATION).
+          description: Filter by movement type identifier (IN, OUT, ADJUSTMENT, TRANSFER).
           example: 2
         reasonId:
           type: integer
@@ -436,13 +441,6 @@ components:
             Defaults to true. Set to false to hide compensated movements.
           default: true
           example: true
-        onlyCompensations:
-          type: boolean
-          description: >
-            When true, returns only movements of type COMPENSATION.
-            Defaults to false.
-          default: false
-          example: false
         transferGroupId:
           type: string
           format: uuid
@@ -507,7 +505,14 @@ components:
 
     InventoryMovementSummary:
       type: object
-      description: Summary of a single inventory movement returned by the search endpoint.
+      description: >
+        Summary of a single inventory movement returned by the search endpoint.
+        Every movement goes from fromLocation to toLocation: quantity is added to the
+        destination and subtracted from the origin.
+      required:
+        - fromLocation
+        - toLocation
+        - quantity
       properties:
         movementId:
           type: integer
@@ -531,22 +536,25 @@ components:
           allOf:
             - $ref: '#/components/schemas/MovementBatchSummary'
         fromLocation:
-          nullable: true
-          description: Origin location. Null for inbound movements (IN).
+          description: >
+            Origin location. Always present; it may be a virtual location (e.g. SUPPLIER for an
+            inbound movement). Its usage tells whether it is a physical or a virtual location.
           allOf:
             - $ref: '#/components/schemas/MovementLocationSummary'
         toLocation:
-          nullable: true
-          description: Destination location. Null for outbound movements (OUT).
+          description: >
+            Destination location. Always present; it may be a virtual location (e.g. CUSTOMER or
+            LOSS for an outbound movement). Its usage tells whether it is a physical or a virtual location.
           allOf:
             - $ref: '#/components/schemas/MovementLocationSummary'
         quantity:
           type: integer
           format: int32
           description: >
-            Quantity moved. Positive for inbound (IN), negative for outbound (OUT).
-            Sign convention depends on the movement type.
-          example: -25
+            Number of units moved. Always positive: the direction is given by fromLocation and
+            toLocation (added to the destination, subtracted from the origin).
+          minimum: 1
+          example: 25
         reason:
           $ref: '#/components/schemas/MovementReasonSummary'
         documentReference:
@@ -634,6 +642,8 @@ components:
     MovementLocationSummary:
       type: object
       description: Summary of a storage location involved in a movement.
+      required:
+        - usage
       properties:
         id:
           type: integer
@@ -644,6 +654,27 @@ components:
           type: string
           description: Location name.
           example: "Tienda Centro Madrid"
+        usage:
+          $ref: '#/components/schemas/LocationUsage'
+
+    LocationUsage:
+      type: string
+      description: >
+        Role a location plays in the inventory ledger.
+        - INTERNAL: physical location of the tenant (store, warehouse). Only internal locations hold stock.
+        - SUPPLIER: virtual location where inbound goods come from.
+        - CUSTOMER: virtual location where sold goods go to.
+        - INTERNAL_CONSUMPTION: virtual location for goods consumed internally.
+        - LOSS: virtual location for lost, damaged or expired goods.
+        - ADJUSTMENT: virtual counterpart of manual stock corrections.
+      enum:
+        - INTERNAL
+        - SUPPLIER
+        - CUSTOMER
+        - INTERNAL_CONSUMPTION
+        - LOSS
+        - ADJUSTMENT
+      example: "INTERNAL"
 
     MovementReasonSummary:
       type: object

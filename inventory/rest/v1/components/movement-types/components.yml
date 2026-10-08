@@ -21,7 +21,7 @@ components:
           $ref: '#/components/schemas/MovementTypeId'
         name:
           type: string
-          description: Code or name of the movement type (e.g., IN, OUT, ADJUSTMENT, TRANSFER, COMPENSATION)
+          description: Code or name of the movement type (e.g., IN, OUT, ADJUSTMENT, TRANSFER)
           minLength: 1
           maxLength: 255
           example: "IN"
