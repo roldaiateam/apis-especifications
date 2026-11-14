@@ -14,7 +14,6 @@ post:
       It cannot be combined with fromLocationId or toLocationId in the same request.
     - dateFrom must be <= dateTo when both are present.
     - includeCompensated defaults to true; set to false to exclude already-compensated movements.
-    - onlyCompensations defaults to false; set to true to return only COMPENSATION type movements.
   operationId: searchMovements
   requestBody:
     description: Search criteria with optional filters, pagination and sorting
@@ -37,7 +36,6 @@ post:
                 dateFrom: "2026-05-01T00:00:00Z"
                 dateTo: "2026-05-17T23:59:59Z"
                 includeCompensated: true
-                onlyCompensations: false
                 transferGroupId: "8f3e9c1b-7a52-4d8e-b1f4-9c2a6e5d8b3a"
                 documentReference: "ALB-2026-00045"
               page: 0
@@ -93,8 +91,12 @@ post:
                     fromLocation:
                       id: 5
                       name: "Tienda Centro Madrid"
-                    toLocation: null
-                    quantity: -25
+                      usage: "INTERNAL"
+                    toLocation:
+                      id: 102
+                      name: "Clientes"
+                      usage: "CUSTOMER"
+                    quantity: 25
                     reason:
                       id: 1
                       code: "SALE"
@@ -129,9 +131,11 @@ post:
                     fromLocation:
                       id: 3
                       name: "Almacén Principal"
+                      usage: "INTERNAL"
                     toLocation:
                       id: 5
                       name: "Tienda Centro Madrid"
+                      usage: "INTERNAL"
                     quantity: 50
                     reason:
                       id: 5

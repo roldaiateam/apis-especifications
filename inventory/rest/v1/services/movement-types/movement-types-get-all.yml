@@ -4,7 +4,7 @@ get:
   summary: Get all movement types
   description: >
     Retrieves a list of all movement types available in the system
-    (e.g., IN, OUT, ADJUSTMENT, TRANSFER, COMPENSATION).
+    (e.g., IN, OUT, ADJUSTMENT, TRANSFER).
   operationId: getMovementTypes
   responses:
     '200':

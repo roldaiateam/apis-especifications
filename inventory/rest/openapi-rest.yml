@@ -7,7 +7,7 @@ info:
     name: Proactive Devs team
     email: proactivedevs@gmail.com
     url: 'http://proactivedevs.com'
-  version: 1.0.0
+  version: 2.0.0
 
 servers:
   - url: http://localhost:8090/mic-inventory
