@@ -1,0 +1,101 @@
+post:
+  tags:
+    - Inventory
+  summary: Register inventory adjustments
+  description: >
+    Registers one or more manual inventory adjustments. Each item carries a signed delta
+    (positive adds units, negative removes them) and is stored as an ADJUSTMENT movement against
+    the virtual location "Ajustes de inventario": positive delta goes from it to the item location,
+    negative delta goes from the item location to it. The movement quantity is |delta|.
+    Each item is validated and persisted independently, in its own transaction (event +
+    projection task) — a rejected item does not affect the others. Registration is synchronous;
+    the response reflects the final accepted/rejected outcome of every item.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires role: store_admin.
+    Business rules per item:
+    - productId, locationId and reasonId must exist; product and location must be active; location must be physical.
+    - delta must not be 0.
+    - batchId, when present, must belong to productId. Without batchId, a negative delta uses theoretical FEFO
+      and a positive delta is rejected.
+    - reasonId must be an adjustment reason; notes are mandatory when the reason requires them.
+    - Stock is allowed to go negative.
+    - employee_id is extracted automatically from the JWT — do NOT include it in the request.
+    Per-item error codes reported in results: PRODUCT_NOT_FOUND, PRODUCT_INACTIVE,
+    LOCATION_NOT_FOUND, LOCATION_INACTIVE, MOVEMENT_LOCATIONS_INCOHERENT, BATCH_NOT_FOUND,
+    FEFO_NO_ACTIVE_BATCH_FOUND, BATCH_REQUIRED_FOR_POSITIVE_ADJUSTMENT, ADJUSTMENT_DELTA_ZERO,
+    MOVEMENT_REASON_NOT_FOUND, MOVEMENT_REASON_NOT_APPLICABLE, MOVEMENT_REASON_NOTES_REQUIRED.
+  operationId: registerAdjustmentMovement
+  requestBody:
+    description: One or more adjustments to register
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/RegisterAdjustmentBulkRequest'
+        examples:
+          partialSuccess:
+            summary: Two items — one adds, one removes
+            value:
+              items:
+                - productId: 42
+                  locationId: 5
+                  batchId: 311
+                  delta: 2
+                  reasonId: 8
+                  notes: "Aparecieron 2 cajas en el almacén trasero"
+                - productId: 43
+                  locationId: 5
+                  delta: -3
+                  reasonId: 7
+          minimal:
+            summary: Single item — minimal required fields
+            value:
+              items:
+                - productId: 10
+                  locationId: 2
+                  delta: -1
+                  reasonId: 7
+  responses:
+    '201':
+      description: Items registered. Check accepted/errorCode per result for the outcome of each item.
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/MovementRegistrationResponse'
+          examples:
+            partialSuccess:
+              summary: One item accepted, one rejected
+              value:
+                results:
+                  - index: 0
+                    accepted: true
+                    movementId: 501
+                  - index: 1
+                    accepted: false
+                    errorCode: PRODUCT_NOT_FOUND
+                    errorMessage: "Product with id 43 not found"
+            allAccepted:
+              summary: All items registered successfully
+              value:
+                results:
+                  - index: 0
+                    accepted: true
+                    movementId: 502
+    '400':
+      description: Request-level validation error — malformed payload or items array constraints violated
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+          examples:
+            emptyItems:
+              summary: items array is empty or missing
+              value:
+                errorCode: MOVEMENT_ADJUSTMENT_VALIDATION
+                errorMessage: items array must contain between 1 and 100 elements
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'
