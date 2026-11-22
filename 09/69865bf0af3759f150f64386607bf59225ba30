@@ -1,0 +1,25 @@
+inventory/rest/metadata.yml
+  s_c4939bd0251d51::t_bb03110a4947ff 6
+inventory/rest/openapi-rest.yml
+  s_c4939bd0251d51::t_5921841e49b303 10,41-42
+inventory/rest/v1/components/movements/components.yml
+  s_c4939bd0251d51::t_36d8d0a8585ec0 415,424-425,431,434-446
+inventory/rest/v1/services/movements/movements-reversal.yml
+  s_c4939bd0251d51::t_b2e9975e007eae 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0969865bf0af3759f150f64386607bf59225ba30",
+  "prompts": {},
+  "sessions": {
+    "s_c4939bd0251d51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "194f8d6b-f173-437f-865e-51c9b256f0e8",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
