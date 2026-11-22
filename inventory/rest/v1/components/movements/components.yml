@@ -186,6 +186,89 @@ components:
           description: Date and time of the movement (ISO 8601). Defaults to current server time when omitted.
           example: "2026-05-17T10:15:00Z"
 
+    RegisterAdjustmentBulkRequest:
+      type: object
+      description: >
+        Request payload to register one or more inventory adjustments in a single operation.
+        Each item is registered independently, in its own transaction (event + projection task) —
+        partial failures are reported per item in the response without rolling back successfully
+        processed items. There is no shared receipt: documentReference and notes are per item.
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          description: List of adjustments to register. Between 1 and 100 items per request.
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/RegisterAdjustmentItemInput'
+
+    RegisterAdjustmentItemInput:
+      type: object
+      description: >
+        Individual inventory adjustment within a bulk request. The signed delta is converted into
+        an ADJUSTMENT movement whose quantity is |delta|: a positive delta moves stock from the
+        virtual location "Ajustes de inventario" to the item location, a negative delta does the opposite.
+        Business rules:
+        - productId and locationId must exist; product and location must be active; locationId must be a physical location.
+        - delta must be a non-zero integer.
+        - batchId, when present, must belong to productId (it may be inactive). When omitted, a negative
+          delta resolves the batch by theoretical FEFO; a positive delta is rejected (batch required).
+        - reasonId must be an adjustment reason; when the reason requires notes, notes is mandatory.
+        - There is no available-stock check: the stock is allowed to go negative.
+        - employee_id is resolved automatically from the JWT token — do NOT include it in the request.
+      required:
+        - productId
+        - locationId
+        - delta
+        - reasonId
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: Identifier of the product being adjusted. Must exist and be active.
+          example: 42
+        locationId:
+          type: integer
+          format: int64
+          description: Identifier of the physical location whose stock is corrected. Must exist and be active.
+          example: 5
+        batchId:
+          type: integer
+          format: int64
+          description: >
+            Identifier of the batch being corrected. Optional for a negative delta (FEFO is applied);
+            required for a positive delta. When present, must belong to productId.
+          example: 311
+        delta:
+          type: integer
+          format: int32
+          description: Signed correction. Positive adds units, negative removes them. Must not be 0.
+          example: -3
+        reasonId:
+          type: integer
+          format: int64
+          description: Identifier of the adjustment movement reason (see GET /v1/inventory/movement-reasons?movementType=ADJUSTMENT).
+          example: 7
+        notes:
+          type: string
+          description: Free-text notes about this specific item. Mandatory when the reason requires notes.
+          minLength: 1
+          maxLength: 1000
+          example: "Aparecieron 2 cajas en el almacén trasero"
+        documentReference:
+          type: string
+          description: Reference to the source document.
+          minLength: 1
+          maxLength: 100
+          example: "AJ-2026-00012"
+        movementDate:
+          type: string
+          format: date-time
+          description: Date and time of the adjustment (ISO 8601). Defaults to current server time when omitted.
+          example: "2026-05-17T10:15:00Z"
+
     RegisterTransferBulkRequest:
       type: object
       description: >

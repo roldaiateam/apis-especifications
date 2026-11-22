@@ -30,6 +30,10 @@ components:
           description: Human-readable description of the movement reason
           maxLength: 500
           example: "Venta"
+        notesRequired:
+          type: boolean
+          description: Whether a movement using this reason must include notes.
+          example: false
 
     MovementReasonId:
       type: integer

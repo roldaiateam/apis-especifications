@@ -4,8 +4,20 @@ get:
   summary: Get all movement reasons
   description: >
     Retrieves a list of all movement reasons available in the system
-    (e.g., SALE, INTERNAL_CONSUMPTION, EXPIRY, OTHER).
+    (e.g., SALE, INTERNAL_CONSUMPTION, EXPIRY, OTHER, COUNT_ERROR, FOUND).
+    Can be filtered by the movement type the reason applies to; without filter, all reasons are returned.
+    Each reason indicates whether notes are required when it is used.
   operationId: getMovementReasons
+  parameters:
+    - name: movementType
+      in: query
+      required: false
+      description: Returns only the reasons applicable to this movement type.
+      schema:
+        type: string
+        enum:
+          - OUT
+          - ADJUSTMENT
   responses:
     '200':
       description: List of movement reasons retrieved successfully
