@@ -1,0 +1,69 @@
+post:
+  tags:
+    - Inventory
+  summary: Reverse an inventory movement
+  description: >
+    Reverses a movement by registering a mirror REVERSAL movement linked to it. The reversal has the
+    same product, batch, quantity, supplier, unit cost, currency and document reference as the
+    original; its origin is the destination of the original and its destination is the origin of the
+    original. The original movement is never modified. The whole movement is always reversed
+    (no partial reversal) and there is no time limit.
+    Registration is synchronous and the stock projection is processed afterwards, like any other
+    movement.
+    The tenant is automatically resolved from the JWT token (claim: tenant_name).
+    Requires permission INVENTORY.WRITE. A user can reverse the movements they registered; a user with
+    permission INVENTORY.REVERSE can reverse any movement.
+    Business rules:
+    - A movement can be reversed at most once, even under concurrent requests (409).
+    - A reversal cannot be reversed (409).
+    - The reversal is accepted even if the product, batch or locations were deactivated since, and
+      even if the resulting stock is negative.
+    - notes is mandatory (1 to 1000 characters).
+    - employee_id is extracted automatically from the JWT — do NOT include it in the request.
+    Error codes: MOVEMENT_NOT_FOUND (404), MOVEMENT_REVERSAL_FORBIDDEN (403),
+    MOVEMENT_IS_REVERSAL (409), MOVEMENT_ALREADY_REVERSED (409).
+  operationId: reverseMovement
+  parameters:
+    - name: movementId
+      in: path
+      required: true
+      description: Identifier of the movement to reverse.
+      schema:
+        type: integer
+        format: int64
+        example: 4870
+  requestBody:
+    description: Reason for the reversal
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: '../../components/movements/components.yml#/components/schemas/ReverseMovementRequest'
+        examples:
+          typo:
+            summary: Inbound registered with the wrong quantity
+            value:
+              notes: "Entrada registrada con 21 unidades en vez de 20"
+  responses:
+    '201':
+      description: Reversal registered. Returns the created reversal movement.
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/movements/components.yml#/components/schemas/InventoryMovementSummary'
+    '401':
+      $ref: '../../components/errors/components.yml#/components/responses/Unauthorized'
+    '403':
+      $ref: '../../components/errors/components.yml#/components/responses/Forbidden'
+    '404':
+      $ref: '../../components/errors/components.yml#/components/responses/NotFound'
+    '409':
+      $ref: '../../components/errors/components.yml#/components/responses/Conflict'
+    '422':
+      description: Missing or invalid notes
+      content:
+        application/json:
+          schema:
+            $ref: '../../components/errors/components.yml#/components/schemas/ApiErrorResponse'
+    '500':
+      $ref: '../../components/errors/components.yml#/components/responses/InternalServerError'

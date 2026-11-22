@@ -412,6 +412,7 @@ components:
         - IN: inbound stock entry (purchase from supplier).
         - OUT: outbound stock exit (sale or consumption).
         - ADJUSTMENT: manual stock correction.
+        - REVERSAL: mirror movement that cancels a previous movement.
         Every movement goes from an origin location to a destination location; locations
         outside the warehouse are modelled as virtual locations (see LocationUsage).
         - IN: inbound stock entry (from the SUPPLIER virtual location to an internal location).
@@ -420,12 +421,28 @@ components:
         - ADJUSTMENT: manual stock correction (between an internal location and the ADJUSTMENT
           virtual location).
         - TRANSFER: stock moved between two internal locations.
+        - REVERSAL: mirror of the reversed movement (origin and destination swapped), linked to it
+          through compensatesMovementId.
       enum:
         - IN
         - OUT
         - ADJUSTMENT
         - TRANSFER
+        - REVERSAL
       example: "IN"
+
+    ReverseMovementRequest:
+      type: object
+      description: Request payload to reverse a movement.
+      required:
+        - notes
+      properties:
+        notes:
+          type: string
+          description: Free-text reason for the reversal.
+          minLength: 1
+          maxLength: 1000
+          example: "Entrada registrada con 21 unidades en vez de 20"
 
     SearchMovementsRequest:
       type: object
