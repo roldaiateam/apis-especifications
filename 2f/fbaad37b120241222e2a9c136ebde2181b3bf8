@@ -1,0 +1,29 @@
+inventory/rest/metadata.yml
+  s_b1fc0ad2961b67::t_a7afe35c88b5b0 6
+inventory/rest/openapi-rest.yml
+  s_b1fc0ad2961b67::t_2214cbd97f50de 10,39-40
+inventory/rest/v1/components/movement-reasons/components.yml
+  s_b1fc0ad2961b67::t_35eaf91986a9ac 33-36
+inventory/rest/v1/components/movements/components.yml
+  s_b1fc0ad2961b67::t_c38c0bce3486bc 188-270
+inventory/rest/v1/services/movement-reasons/movement-reasons-get-all.yml
+  s_b1fc0ad2961b67::t_74b487544225cb 7-9,11-20
+inventory/rest/v1/services/movements/movements-adjustments.yml
+  s_b1fc0ad2961b67::t_ff46d888a49030 1-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2ffbaad37b120241222e2a9c136ebde2181b3bf8",
+  "prompts": {},
+  "sessions": {
+    "s_b1fc0ad2961b67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7d087fcf-c1d4-429f-9d10-9064e810c6fa",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "reinalx <andresrci@ext.inditex.com>"
+    }
+  }
+}
